@@ -18,9 +18,6 @@ import time
 import unittest
 import serial
 
-sys.path.append('..')
-import esptool, espefuse
-
 # point is this file is not 4 byte aligned in length
 NODEMCU_FILE = "nodemcu-master-7-modules-2017-01-19-11-10-03-integer.bin"
 
@@ -30,7 +27,6 @@ try:
     ESPTOOL_PY = os.environ["ESPTOOL_PY"]
 except KeyError:
     ESPTOOL_PY = os.path.join(TEST_DIR, "..", "esptool.py")
-ESPSECURE_PY = os.path.join(TEST_DIR, "..", "espsecure.py")
 
 # Command line options for test environment
 global default_baudrate, chip, serialport, trace_enabled
@@ -41,24 +37,11 @@ trace_enabled = False
 try:
     chip = sys.argv[2]
 except IndexError:
-    chip = None  # fails in main()
+    chip = None
 
 RETURN_CODE_FATAL_ERROR = 2
 
-
 class EsptoolTestCase(unittest.TestCase):
-
-    def run_espsecure(self, args):
-
-        cmd = [sys.executable, ESPSECURE_PY ] + args.split(" ")
-        print("Running %s..." % (" ".join(cmd)))
-        try:
-            output = subprocess.check_output([str(s) for s in cmd], cwd=TEST_DIR, stderr=subprocess.STDOUT)
-            print(output)  # for more complete stdout logs on failure
-            return output.decode("utf-8")
-        except subprocess.CalledProcessError as e:
-            print(e.output)
-            raise e
 
     def run_esptool(self, args, baud=None):
         """ Run esptool with the specified arguments. --chip, --port and --baud
@@ -110,7 +93,7 @@ class EsptoolTestCase(unittest.TestCase):
         tf = tempfile.NamedTemporaryFile(delete=False)  # need a file we can read into
         self.tempfiles.append(tf.name)
         tf.close()
-        self.run_esptool("--before default_reset read_flash %d %d %s" % (offset, length, tf.name))
+        self.run_esptool("read_flash %d %d %s" % (offset, length, tf.name))
         with open(tf.name, "rb") as f:
             rb = f.read()
 
@@ -133,84 +116,6 @@ class EsptoolTestCase(unittest.TestCase):
         for rb_b,ct_b,offs in zip(rb,ct,range(len(rb))):
             if rb_b != ct_b:
                 self.fail("First difference at offset 0x%x Expected %r got %r" % (offs, ct_b, rb_b))
-
-
-@unittest.skipUnless(chip == 'esp32', 'ESP32 only')
-class TestFlashEncryption(EsptoolTestCase):
-
-    def valid_key_present(self):
-        esp = esptool.ESP32ROM(serialport)
-        esp.connect()
-        efuses = espefuse.EspEfuses(esp)
-        blk1_rd_en = efuses["BLK1"].is_readable()
-        return not blk1_rd_en
-
-    """ since flash crypt config is not set correct this test should abort write """
-    def test_blank_efuse_encrypt_write_abort(self):
-        print('test_blank_efuse_encrypt_write_abort')
-
-        if self.valid_key_present() is True:
-            raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
-
-        self.run_esptool("write_flash 0x1000 images/bootloader.bin 0x8000 images/partitions_singleapp.bin 0x10000 images/helloworld-esp32.bin")
-        output = self.run_esptool_error("write_flash --encrypt 0x10000 images/helloworld-esp32.bin")
-        self.assertIn("Incorrect efuse setting: aborting flash write", output)
-
-    """ since ignore option is specified write should happen even though flash crypt config is 0
-    later encrypted flash contents should be read back & compared with precomputed ciphertext
-    pass case """
-    def test_blank_efuse_encrypt_write_continue1(self):
-        print('test_blank_efuse_encrypt_write_continue1')
-
-        if self.valid_key_present() is True:
-            raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
-
-        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32.bin")
-        self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin --flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
-
-        try:
-            with open("images/read_encrypted_flash.bin", "rb") as file1:
-                read_file1 = file1.read()
-
-            with open("images/local_enc.bin", "rb") as file2:
-                read_file2 = file2.read()
-
-            for rf1, rf2,i in zip(read_file1, read_file2, range(len(read_file2))):
-                self.assertEqual(rf1, rf2, "encrypted write failed: file mismatch at byte position %d" % i)
-
-            print('encrypted write success')
-        finally:
-            os.remove("images/read_encrypted_flash.bin")
-            os.remove("images/local_enc.bin")
-
-    """ since ignore option is specified write should happen even though flash crypt config is 0
-    later encrypted flash contents should be read back & compared with precomputed ciphertext
-    fail case """
-    @unittest.expectedFailure
-    def test_blank_efuse_encrypt_write_continue2(self):
-        print('test_blank_efuse_encrypt_write_continue2')
-
-        if self.valid_key_present() is True:
-            raise unittest.SkipTest("Valid encryption key already programmed, aborting the test")
-
-        self.run_esptool("write_flash --encrypt --ignore-flash-encryption-efuse-setting 0x10000 images/helloworld-esp32_edit.bin")
-        self.run_esptool("read_flash 0x10000 192 images/read_encrypted_flash.bin")
-        self.run_espsecure("encrypt_flash_data --address 0x10000 --keyfile images/aes_key.bin --flash_crypt_conf 0 --output images/local_enc.bin images/helloworld-esp32.bin")
-
-        try:
-            with open("images/read_encrypted_flash.bin", "rb") as file1:
-                read_file1 = file1.read()
-
-            with open("images/local_enc.bin", "rb") as file2:
-                read_file2 = file2.read()
-
-            for rf1, rf2,i in zip(read_file1, read_file2, range(len(read_file2))):
-                self.assertEqual(rf1, rf2, "files mismatch at byte position %d" % i)
-
-        finally:
-            os.remove("images/read_encrypted_flash.bin")
-            os.remove("images/local_enc.bin")
 
 
 class TestFlashing(EsptoolTestCase):
@@ -343,28 +248,6 @@ class TestFlashSizes(EsptoolTestCase):
         output = self.run_esptool_error("write_flash -u -fs 1MB 0x280000 images/one_kb.bin")
         self.assertIn("File images/one_kb.bin", output)
         self.assertIn("will not fit", output)
-
-    def test_flash_size_keep(self):
-        if chip == "esp8266":
-            # this image is configured for 512KB flash by default.
-            # assume this is not the flash size in use
-            image = "images/esp8266_sdk/boot_v1.4(b1).bin"
-            offset = 0x0
-        elif chip == "esp32":
-            # this image is configured for 2MB flash by default,
-            # assume this is not the flash size in use
-            image = "images/bootloader.bin"
-            offset = 0x1000
-        else:
-            self.fail("unsupported chip for test: %s" % chip)
-
-        with open(image, "rb") as f:
-            f.seek(0, 2)
-            image_len = f.tell()
-        self.run_esptool("write_flash -fs keep %d %s" % (offset, image))
-        # header should be the same as in the .bin file
-        self.verify_readback(offset, image_len, image)
-
 
 
 class TestFlashDetection(EsptoolTestCase):
@@ -514,9 +397,7 @@ class TestLoadRAM(EsptoolTestCase):
         self.run_esptool("load_ram images/helloworld-%s.bin" % chip)
         p = serial.serial_for_url(serialport, default_baudrate)
         p.timeout = 0.2
-        output = p.read(100)
-        print("Output: %r" % output)
-        self.assertIn(b"Hello world!", output)
+        self.assertIn(b"Hello world!", p.read(32))
         p.close()
 
 

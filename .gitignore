@@ -1,0 +1,7 @@
+*.gcov
+*.gcno
+*.gcda
+*.o
+*.a
+*.ini
+

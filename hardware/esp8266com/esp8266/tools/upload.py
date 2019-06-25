@@ -30,4 +30,6 @@ while len(sys.argv):
         # compatibility with the old esptool-ck.exe.  Esptool.py doesn't seem
         # work reliably at 921k, but is still significantly faster at 460kbaud.
         thisarg = sys.argv.pop(0)
+        if thisarg == "921600":
+            thisarg = "460800"
         fakeargs = fakeargs + [thisarg]
