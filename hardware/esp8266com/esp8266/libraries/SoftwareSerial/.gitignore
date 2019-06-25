@@ -31,4 +31,3 @@ _ReSharper*/
 #Nuget packages folder
 packages/
 __vm/
-*.ini
