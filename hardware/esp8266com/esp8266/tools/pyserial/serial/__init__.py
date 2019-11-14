@@ -7,13 +7,15 @@
 #
 # SPDX-License-Identifier:    BSD-3-Clause
 
+from __future__ import absolute_import
+
 import sys
 import importlib
 
 from serial.serialutil import *
 #~ SerialBase, SerialException, to_bytes, iterbytes
 
-__version__ = '3.4'
+__version__ = '3.4.1'
 
 VERSION = __version__
 

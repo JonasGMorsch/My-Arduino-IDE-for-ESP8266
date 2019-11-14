@@ -16,6 +16,8 @@
 # options:
 # - "debug" print diagnostic messages
 
+from __future__ import absolute_import
+
 import errno
 import logging
 import select
@@ -247,7 +249,8 @@ class Serial(SerialBase):
         while ready:
             ready, _, _ = select.select([self._socket], [], [], 0)
             try:
-                self._socket.recv(4096)
+                if ready:
+                    ready = self._socket.recv(4096)
             except OSError as e:
                 # this is for Python 3.x where select.error is a subclass of
                 # OSError ignore BlockingIOErrors and EINTR. other errors are shown

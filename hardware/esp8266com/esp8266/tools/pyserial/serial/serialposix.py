@@ -26,6 +26,8 @@
 # - aix (AIX)               /dev/tty%d
 
 
+from __future__ import absolute_import
+
 # pylint: disable=abstract-method
 import errno
 import fcntl
@@ -49,6 +51,18 @@ class PlatformSpecificBase(object):
     def _set_rs485_mode(self, rs485_settings):
         raise NotImplementedError('RS485 not supported on this platform')
 
+    def set_low_latency_mode(self, low_latency_settings):
+        raise NotImplementedError('Low latency not supported on this platform')
+
+    def _update_break_state(self):
+        """\
+        Set break: Controls TXD. When active, no transmitting is possible.
+        """
+        if self._break_state:
+            fcntl.ioctl(self.fd, TIOCSBRK)
+        else:
+            fcntl.ioctl(self.fd, TIOCCBRK)
+    
 
 # some systems support an extra flag to enable the two in POSIX unsupported
 # paritiy settings for MARK and SPACE
@@ -112,6 +126,24 @@ if plat[:5] == 'linux':    # Linux (confirmed)  # noqa
             3500000: 0o010016,
             4000000: 0o010017
         }
+
+        def set_low_latency_mode(self, low_latency_settings):
+            buf = array.array('i', [0] * 32)
+
+            try:
+                # get serial_struct
+                fcntl.ioctl(self.fd, termios.TIOCGSERIAL, buf)
+
+                # set or unset ASYNC_LOW_LATENCY flag
+                if low_latency_settings:
+                    buf[4] |= 0x2000
+                else:
+                    buf[4] &= ~0x2000
+
+                # set serial_struct
+                fcntl.ioctl(self.fd, termios.TIOCSSERIAL, buf)
+            except IOError as e:
+                raise ValueError('Failed to update ASYNC_LOW_LATENCY flag to {}: {}'.format(low_latency_settings, e))
 
         def _set_special_baudrate(self, baudrate):
             # right size is 44 on x86_64, allow for some growth
@@ -182,12 +214,24 @@ elif plat[:6] == 'darwin':   # OS X
 
     class PlatformSpecific(PlatformSpecificBase):
         osx_version = os.uname()[2].split('.')
+        TIOCSBRK = 0x2000747B # _IO('t', 123)
+        TIOCCBRK = 0x2000747A # _IO('t', 122)
+
         # Tiger or above can support arbitrary serial speeds
         if int(osx_version[0]) >= 8:
             def _set_special_baudrate(self, baudrate):
                 # use IOKit-specific call to set up high speeds
                 buf = array.array('i', [baudrate])
                 fcntl.ioctl(self.fd, IOSSIOSPEED, buf, 1)
+
+        def _update_break_state(self):
+            """\
+            Set break: Controls TXD. When active, no transmitting is possible.
+            """
+            if self._break_state:
+                fcntl.ioctl(self.fd, PlatformSpecific.TIOCSBRK)
+            else:
+                fcntl.ioctl(self.fd, PlatformSpecific.TIOCCBRK)
 
 elif plat[:3] == 'bsd' or \
      plat[:7] == 'freebsd' or \
@@ -203,6 +247,19 @@ elif plat[:3] == 'bsd' or \
         # The baud rate may be passed in as
         # a literal value.
         BAUDRATE_CONSTANTS = ReturnBaudrate()
+
+        TIOCSBRK = 0x2000747B # _IO('t', 123)
+        TIOCCBRK = 0x2000747A # _IO('t', 122)
+
+        
+        def _update_break_state(self):
+            """\
+            Set break: Controls TXD. When active, no transmitting is possible.
+            """
+            if self._break_state:
+                fcntl.ioctl(self.fd, PlatformSpecific.TIOCSBRK)
+            else:
+                fcntl.ioctl(self.fd, PlatformSpecific.TIOCCBRK)
 
 else:
     class PlatformSpecific(PlatformSpecificBase):
@@ -612,15 +669,6 @@ class Serial(SerialBase, PlatformSpecific):
             raise portNotOpenError
         termios.tcsendbreak(self.fd, int(duration / 0.25))
 
-    def _update_break_state(self):
-        """\
-        Set break: Controls TXD. When active, no transmitting is possible.
-        """
-        if self._break_state:
-            fcntl.ioctl(self.fd, TIOCSBRK)
-        else:
-            fcntl.ioctl(self.fd, TIOCCBRK)
-
     def _update_rts_state(self):
         """Set terminal status line: Request To Send"""
         if self._rts_state:
@@ -733,21 +781,28 @@ class PosixPollSerial(Serial):
         if not self.is_open:
             raise portNotOpenError
         read = bytearray()
+        timeout = Timeout(self._timeout)
         poll = select.poll()
         poll.register(self.fd, select.POLLIN | select.POLLERR | select.POLLHUP | select.POLLNVAL)
+        poll.register(self.pipe_abort_read_r, select.POLLIN | select.POLLERR | select.POLLHUP | select.POLLNVAL)
         if size > 0:
             while len(read) < size:
                 # print "\tread(): size",size, "have", len(read)    #debug
                 # wait until device becomes ready to read (or something fails)
-                for fd, event in poll.poll(self._timeout * 1000):
+                for fd, event in poll.poll(None if timeout.is_infinite else (timeout.time_left() * 1000)):
+                    if fd == self.pipe_abort_read_r:
+                        break
                     if event & (select.POLLERR | select.POLLHUP | select.POLLNVAL):
                         raise SerialException('device reports error (poll)')
                     #  we don't care if it is select.POLLIN or timeout, that's
                     #  handled below
+                if fd == self.pipe_abort_read_r:
+                    os.read(self.pipe_abort_read_r, 1000)
+                    break
                 buf = os.read(self.fd, size - len(read))
                 read.extend(buf)
-                if ((self._timeout is not None and self._timeout >= 0) or
-                        (self._inter_byte_timeout is not None and self._inter_byte_timeout > 0)) and not buf:
+                if timeout.expired() \
+                        or (self._inter_byte_timeout is not None and self._inter_byte_timeout > 0) and not buf:
                     break   # early abort on timeout
         return bytes(read)
 
@@ -759,6 +814,9 @@ class VTIMESerial(Serial):
     the error handling is degraded.
 
     Overall timeout is disabled when inter-character timeout is used.
+
+    Note that this implementation does NOT support cancel_read(), it will
+    just ignore that.
     """
 
     def _reconfigure_port(self, force_update=True):

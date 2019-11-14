@@ -58,6 +58,8 @@
 #   RFC).
 # the order of the options is not relevant
 
+from __future__ import absolute_import
+
 import logging
 import socket
 import struct
@@ -481,7 +483,7 @@ class Serial(SerialBase):
             if self.logger:
                 self.logger.info("Negotiated options: {}".format(self._telnet_options))
 
-            # fine, go on, set RFC 2271 specific things
+            # fine, go on, set RFC 2217 specific things
             self._reconfigure_port()
             # all things set up get, now a clean start
             if not self._dsrdtr:
@@ -611,9 +613,12 @@ class Serial(SerialBase):
         try:
             timeout = Timeout(self._timeout)
             while len(data) < size:
-                if self._thread is None:
+                if self._thread is None or not self._thread.is_alive():
                     raise SerialException('connection failed (reader thread died)')
-                data += self._read_buffer.get(True, timeout.time_left())
+                buf = self._read_buffer.get(True, timeout.time_left())
+                if buf is None:
+                    return bytes(data)
+                data += buf
                 if timeout.expired():
                     break
         except Queue.Empty:  # -> timeout
@@ -738,8 +743,10 @@ class Serial(SerialBase):
                     # connection fails -> terminate loop
                     if self.logger:
                         self.logger.debug("socket error in reader thread: {}".format(e))
+                    self._read_buffer.put(None)
                     break
                 if not data:
+                    self._read_buffer.put(None)
                     break  # lost connection
                 for byte in iterbytes(data):
                     if mode == M_NORMAL:
@@ -783,7 +790,6 @@ class Serial(SerialBase):
                         self._telnet_negotiate_option(telnet_command, byte)
                         mode = M_NORMAL
         finally:
-            self._thread = None
             if self.logger:
                 self.logger.debug("read thread terminated")
 

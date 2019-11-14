@@ -194,7 +194,7 @@ static int lfs_bd_prog(lfs_t *lfs,
             off += diff;
             size -= diff;
 
-            pcache->size = off - pcache->off;
+            pcache->size = lfs_max(pcache->size, off - pcache->off);
             if (pcache->size == lfs->cfg->cache_size) {
                 // eagerly flush out pcache if we fill up
                 int err = lfs_bd_flush(lfs, pcache, rcache, validate);
@@ -617,7 +617,7 @@ static int lfs_dir_getread(lfs_t *lfs, const lfs_mdir_t *dir,
                 lfs->cfg->cache_size);
         int err = lfs_dir_getslice(lfs, dir, gmask, gtag,
                 rcache->off, rcache->buffer, rcache->size);
-        if (err) {
+        if (err < 0) {
             return err;
         }
     }
@@ -2548,7 +2548,7 @@ relocate:
                 }
             }
         } else {
-            file->ctz.size = lfs_max(file->pos, file->ctz.size);
+            file->pos = lfs_max(file->pos, file->ctz.size);
         }
 
         // actual file updates
@@ -3335,6 +3335,14 @@ int lfs_format(lfs_t *lfs, const struct lfs_config *cfg) {
 
         // sanity check that fetch works
         err = lfs_dir_fetch(lfs, &root, (const lfs_block_t[2]){0, 1});
+        if (err) {
+            goto cleanup;
+        }
+
+        // force compaction to prevent accidentally mounting any
+        // older version of littlefs that may live on disk
+        root.erased = false;
+        err = lfs_dir_commit(lfs, &root, NULL, 0);
         if (err) {
             goto cleanup;
         }
@@ -4399,6 +4407,11 @@ int lfs_migrate(lfs_t *lfs, const struct lfs_config *cfg) {
                     goto cleanup;
                 }
             }
+
+            err = lfs_bd_flush(lfs, &lfs->pcache, &lfs->rcache, true);
+            if (err) {
+                goto cleanup;
+            }
         }
 
         // Create new superblock. This marks a successful migration!
@@ -4439,6 +4452,13 @@ int lfs_migrate(lfs_t *lfs, const struct lfs_config *cfg) {
 
         // sanity check that fetch works
         err = lfs_dir_fetch(lfs, &dir2, (const lfs_block_t[2]){0, 1});
+        if (err) {
+            goto cleanup;
+        }
+
+        // force compaction to prevent accidentally mounting v1
+        dir2.erased = false;
+        err = lfs_dir_commit(lfs, &dir2, NULL, 0);
         if (err) {
             goto cleanup;
         }

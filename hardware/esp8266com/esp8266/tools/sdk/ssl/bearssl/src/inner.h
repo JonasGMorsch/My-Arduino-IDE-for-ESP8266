@@ -56,7 +56,9 @@
  * no more than 23833 bits). RSA key sizes beyond 3072 bits don't make a
  * lot of sense anyway.
  */
+#ifndef BR_MAX_RSA_SIZE
 #define BR_MAX_RSA_SIZE   4096
+#endif
 
 /*
  * Minimum size for a RSA modulus (in bits); this value is used only to
@@ -82,7 +84,9 @@
  * of 8 (so that decoding an integer with that many bytes does not
  * overflow).
  */
+#ifndef BR_MAX_EC_SIZE
 #define BR_MAX_EC_SIZE   528
+#endif
 
 /*
  * Some macros to recognize the current architecture. Right now, we are
@@ -321,9 +325,20 @@
  * values are documented on:
  *    https://sourceforge.net/p/predef/wiki/OperatingSystems/
  *
- * TODO: enrich the list of detected system. Also add detection for
- * alternate system calls like getentropy(), which are usually
- * preferable when available.
+ * Win32's CryptGenRandom() should be available on Windows systems.
+ *
+ * /dev/urandom should work on all Unix-like systems (including macOS X).
+ *
+ * getentropy() is present on Linux (Glibc 2.25+), FreeBSD (12.0+) and
+ * OpenBSD (5.6+). For OpenBSD, there does not seem to be easy to use
+ * macros to test the minimum version, so we just assume that it is
+ * recent enough (last version without getentropy() has gone out of
+ * support in May 2015).
+ *
+ * Ideally we should use getentropy() on macOS (10.12+) too, but I don't
+ * know how to test the exact OS version with preprocessor macros.
+ *
+ * TODO: enrich the list of detected system.
  */
 
 #ifndef BR_USE_URANDOM
@@ -337,6 +352,15 @@
 	|| (defined __sun && (defined __SVR4 || defined __svr4__)) \
 	|| (defined __APPLE__ && defined __MACH__)
 #define BR_USE_URANDOM   1
+#endif
+#endif
+
+#ifndef BR_USE_GETENTROPY
+#if (defined __linux__ \
+	&& (__GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))) \
+	|| (defined __FreeBSD__ && __FreeBSD__ >= 12) \
+	|| defined __OpenBSD__
+#define BR_USE_GETENTROPY   1
 #endif
 #endif
 

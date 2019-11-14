@@ -28,7 +28,7 @@
 #define HardwareSerial_h
 
 #include <inttypes.h>
-#include <time.h>
+#include <../include/time.h> // See issue #6714
 #include "Stream.h"
 #include "uart.h"
 
@@ -87,6 +87,8 @@ public:
     void begin(unsigned long baud, SerialConfig config, SerialMode mode, uint8_t tx_pin);
 
     void end();
+
+    void updateBaudRate(unsigned long baud);
 
     size_t setRxBufferSize(size_t size);
     size_t getRxBufferSize()
