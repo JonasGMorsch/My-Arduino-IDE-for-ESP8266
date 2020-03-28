@@ -486,6 +486,9 @@ void esp2glue_netif_set_up1down0 (int netif_idx, int up1_or_down0)
 	}
 	else
 	{
+		// stop dhcp client (if started)
+		dhcp_release_and_stop(netif);
+
 		// need to do this and pass it to esp
 		// (through netif_sta_status_callback())
 		// to update users's view of state
@@ -505,6 +508,7 @@ void esp2glue_netif_set_up1down0 (int netif_idx, int up1_or_down0)
 #define VAR_NAME_VALUE(var) "-------- " #var " = "  VALUE_TO_STRING(var) " --------\n"
 #pragma message "\n\n" VAR_NAME_VALUE(TCP_MSS) VAR_NAME_VALUE(LWIP_FEATURES) VAR_NAME_VALUE(LWIP_IPV6)
 
+LWIP_ERR_T lwip_unhandled_packet (struct pbuf* pbuf, struct netif* netif) __attribute__((weak));
 LWIP_ERR_T lwip_unhandled_packet (struct pbuf* pbuf, struct netif* netif)
 {
 	// must pbuf_free(pbuf) if packet recognized and managed then return ERR_OK
