@@ -59,18 +59,8 @@ bool SoftwareSerial::isValidGPIOpin(int8_t pin) {
 
 bool SoftwareSerial::isValidRxGPIOpin(int8_t pin) {
     return isValidGPIOpin(pin)
-#if defined(ESP8266) || defined(ESP32)
-        && (pin != 1)
-#endif
 #if defined(ESP8266)
         && (pin != 16)
-#endif
-        ;
-}
-bool SoftwareSerial::isValidTxGPIOpin(int8_t pin) {
-    return isValidGPIOpin(pin)
-#if defined(ESP8266) || defined(ESP32)
-        && (pin != 3)
 #endif
         ;
 }
@@ -89,22 +79,20 @@ void SoftwareSerial::begin(uint32_t baud, SoftwareSerialConfig config,
     m_bitCycles = (ESP.getCpuFreqMHz() * 1000000UL + baud / 2) / baud;
     m_intTxEnabled = true;
     if (isValidRxGPIOpin(m_rxPin)) {
-        std::unique_ptr<circular_queue<uint8_t> > buffer(new circular_queue<uint8_t>((bufCapacity > 0) ? bufCapacity : 64));
-        m_buffer = move(buffer);
+        m_buffer.reset(new circular_queue<uint8_t>((bufCapacity > 0) ? bufCapacity : 64));
         if (m_parityMode)
         {
-            std::unique_ptr<circular_queue<uint8_t> > parityBuffer(new circular_queue<uint8_t>((bufCapacity > 0) ? (bufCapacity + 7) / 8 : 8));
-            m_parityBuffer = move(parityBuffer);
+            m_parityBuffer.reset(new circular_queue<uint8_t>((m_buffer->capacity() + 7) / 8));
             m_parityInPos = m_parityOutPos = 1;
         }
-        std::unique_ptr<circular_queue<uint32_t> > isrBuffer(new circular_queue<uint32_t>((isrBufCapacity > 0) ? isrBufCapacity : (sizeof(uint8_t) * 8 + 2) * bufCapacity));
-        m_isrBuffer = move(isrBuffer);
+        m_isrBuffer.reset(new circular_queue<uint32_t>((isrBufCapacity > 0) ?
+            isrBufCapacity : m_buffer->capacity() * (2 + m_dataBits + static_cast<bool>(m_parityMode))));
         if (m_buffer && (!m_parityMode || m_parityBuffer) && m_isrBuffer) {
             m_rxValid = true;
             pinMode(m_rxPin, INPUT_PULLUP);
         }
     }
-    if (isValidTxGPIOpin(m_txPin)) {
+    if (isValidGPIOpin(m_txPin)) {
         m_txValid = true;
         if (!m_oneWire) {
             pinMode(m_txPin, OUTPUT);
@@ -132,7 +120,7 @@ uint32_t SoftwareSerial::baudRate() {
 }
 
 void SoftwareSerial::setTransmitEnablePin(int8_t txEnablePin) {
-    if (isValidTxGPIOpin(txEnablePin)) {
+    if (isValidGPIOpin(txEnablePin)) {
         m_txEnableValid = true;
         m_txEnablePin = txEnablePin;
         pinMode(m_txEnablePin, OUTPUT);
