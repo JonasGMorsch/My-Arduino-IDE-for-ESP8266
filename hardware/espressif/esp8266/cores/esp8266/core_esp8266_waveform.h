@@ -69,6 +69,13 @@ int stopWaveform(uint8_t pin);
 // Make sure the CB function has the ICACHE_RAM_ATTR decorator.
 void setTimer1Callback(uint32_t (*fn)());
 
+
+
+// Internal-only calls, not for applications
+extern void _setPWMFreq(uint32_t freq);
+extern bool _stopPWM(int pin);
+extern bool _setPWM(int pin, uint32_t val, uint32_t range);
+
 #ifdef __cplusplus
 }
 #endif
