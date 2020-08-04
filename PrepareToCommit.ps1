@@ -9,7 +9,8 @@ $boardGitPath ="$espGitPath\esp8266\boards.txt"
 $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
-habitatcontrol.name= Habitat Control V1
+##############################################################
+habitatcontrol.name= Habitat Control V1.1
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -20,8 +21,8 @@ habitatcontrol.serial.disableDTR=true
 habitatcontrol.serial.disableRTS=true
 habitatcontrol.build.debug_port= 
 habitatcontrol.build.debug_level= 
-habitatcontrol.build.board=ESP8266_aquacontrol
-habitatcontrol.build.variant=aquacontrol
+habitatcontrol.build.board=ESP8266_habitatcontrol
+habitatcontrol.build.variant=habitatcontrol
 habitatcontrol.build.mcu=esp8266
 habitatcontrol.build.core=esp8266
 habitatcontrol.build.spiffs_pagesize=256
