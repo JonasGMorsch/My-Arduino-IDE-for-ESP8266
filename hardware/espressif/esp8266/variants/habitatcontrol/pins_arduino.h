@@ -45,6 +45,9 @@ static const uint8_t SK   = 10;	// WORKS TOO!!
 static const uint8_t SDA = D2;
 static const uint8_t SCL = D3;
 
+#define PIN_WIRE_SDA SDA
+#define PIN_WIRE_SCL SCL
+
 #include "../generic/common.h"
 
 #undef isFlashInterfacePin
