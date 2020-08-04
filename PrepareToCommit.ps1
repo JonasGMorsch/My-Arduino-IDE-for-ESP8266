@@ -10,7 +10,7 @@ $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
 ##############################################################
-habitatcontrol.name= Habitat Control V1.2
+habitatcontrol.name= Habitat Control V1.3
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -21,7 +21,7 @@ habitatcontrol.serial.disableDTR=true
 habitatcontrol.serial.disableRTS=true
 habitatcontrol.build.debug_port= 
 habitatcontrol.build.debug_level= 
-habitatcontrol.build.board=ESP8266_NODEMCU
+habitatcontrol.build.board=ESP8266_habitatcontrol
 habitatcontrol.build.variant=habitatcontrol
 habitatcontrol.build.mcu=esp8266
 habitatcontrol.build.core=esp8266
