@@ -8,6 +8,7 @@ $boardGitPath ="$espGitPath\esp8266\boards.txt"
 
 $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
+
 $habitatcontrolboard ='
 ##############################################################
 habitatcontrol.name= Habitat Control V1.3
@@ -58,6 +59,9 @@ habitatcontrol.menu.baud.921600.upload.speed=921600
 
 ##############################################################'
 
+Write-Host "Stoping Arduino Processes"
+Stop-Process -Name mdns-discovery
+Stop-Process -Name arduino-builder
 
 ################################### Update Compiler ###################################
 Write-Host "Updating GCC++ xtensa-lx106"
@@ -72,6 +76,10 @@ Remove-Item -Recurse -Force -Path $espBetaPath\*\tools\dist # delete after use
 
 Write-Host "Copying Beta to Git Version"
 Copy-Item -Recurse -Force -Path $arduinoBetaPath\* -Destination $arduinoGitPath -Exclude ".gitignore",".gitmodules" # move new files to repo
+
+Write-Host "Removing Git Current Theme"
+Remove-Item -Recurse -Force -Path $arduinoGitPath\lib\theme
+
 Write-Host "Applying My Config Fixes"
 Copy-Item -Recurse -Force -Path $arduinoMyConfigPath\* -Destination $arduinoGitPath 
 
@@ -81,12 +89,16 @@ Remove-Item -Recurse -Force -Path $espGitPath\*\.git
 Remove-Item -Recurse -Force -Path $espGitPath\*\.github
 Remove-Item -Recurse -Force -Path $espGitPath\*\tools\dist # just to be sure no dist has come through
 
+Write-Host "Removing old FS uploader"
+Remove-Item -Recurse -Force -Path $arduinoGitPath\tools\WiFi101
+Remove-Item -Recurse -Force -Path $arduinoGitPath\tools\ESP8266FS
+
 Write-Host "Editing boards.txt"
 $fileContent = Get-Content $boardBetaPath
 $fileContent[((Get-Content $boardGitPath | Select-String -SimpleMatch -Pattern "##############################################################").LineNumber | select-object -First 1)-1] += $habitatcontrolboard
 $fileContent | Set-Content $boardGitPath
 
-Write-Host "Ready to commit!
-"
+Write-Host "Ready to commit!"
 Pause
 Exit
+

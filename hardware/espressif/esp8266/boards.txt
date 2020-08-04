@@ -26,7 +26,7 @@ menu.ssl=SSL Support
 
 ##############################################################
 ##############################################################
-habitatcontrol.name= Habitat Control V1.2
+habitatcontrol.name= Habitat Control V1.3
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464

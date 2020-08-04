@@ -4,7 +4,7 @@
 #VARIABLES COLOR 			#00B3FF - BLUE				LITERAL1
 
 #ERROR COLOR				#A61717 - RED
-#COMMENTS // COLOR			#183a18 - LIGHT GREY
+#COMMENTS // COLOR			#95A5A6 - LIGHT GREY
 #COMMENTS /**/ COLOR		#434F54	- DARK GREY
 
 
@@ -44,13 +44,13 @@ linestatus.bgcolor = #404040
 # EDITOR - DETAILS
 
 # foreground and background colors
-editor.fgcolor = #f0f0f0
+editor.fgcolor = #ffffff
 editor.bgcolor = #202020
 #editor.fgcolor = #d9d9d9
 #editor.bgcolor = #202020
 
 # highlight for the current line
-editor.linehighlight.color=#252525
+editor.linehighlight.color=#333333
 # highlight for the current line
 editor.linehighlight=true
 
@@ -72,7 +72,7 @@ editor.eolmarkers.color = #999999
 
 # bracket/brace highlighting
 editor.brackethighlight = true
-editor.brackethighlight.color = #FFFFFF
+editor.brackethighlight.color = #006699
 
 
 # TEXT - KEYWORDS
@@ -108,7 +108,7 @@ editor.preprocessor.style = #79E300,plain
 editor.url.style = #81A421,plain
 
 # e.g. + - = /
-editor.operator.style = #FFFFFF,plain
+editor.operator.style = #aaaaaa,plain
 
 
 # ?? maybe this is for words followed by a colon
@@ -117,8 +117,8 @@ editor.label.style = #7e7e7e,bold
 
 
 # TEXT - COMMENTS
-editor.comment1.style = #937e52,italic
-editor.comment2.style = #937e52,italic
+editor.comment1.style = #aaaaaa,plain
+editor.comment2.style = #aaaaaa,plain
 
 
 # LINE STATUS - editor line number status bar at the bottom of the screen
