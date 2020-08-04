@@ -60,8 +60,8 @@ habitatcontrol.menu.baud.921600.upload.speed=921600
 ##############################################################'
 
 Write-Host "Stoping Arduino Processes"
-Stop-Process -Name mdns-discovery
-Stop-Process -Name arduino-builder
+Stop-Process -Name mdns-discovery -ErrorAction SilentlyContinue
+Stop-Process -Name arduino-builder -ErrorAction SilentlyContinue
 
 ################################### Update Compiler ###################################
 Write-Host "Updating GCC++ xtensa-lx106"
