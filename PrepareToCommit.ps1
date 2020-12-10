@@ -11,7 +11,7 @@ $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
 ##############################################################
-habitatcontrol.name= Habitat Control V1.3
+habitatcontrol.name= Habitat Control V1.5
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -46,22 +46,27 @@ habitatcontrol.build.spiffs_end=0x3FA000
 habitatcontrol.build.spiffs_blocksize=8192
 habitatcontrol.build.exception_flags=-fexceptions
 habitatcontrol.build.stdcpp_lib=-lstdc++-exc
+habitatcontrol.build.mmuflags=-DMMU_IRAM_SIZE=0xC000 -DMMU_ICACHE_SIZE=0x4000
+habitatcontrol.build.waveform=
 habitatcontrol.menu.wipe.none=Sketch
 habitatcontrol.menu.wipe.none.upload.erase_cmd=
 habitatcontrol.menu.wipe.sdk=Sketch + WiFi Settings
 habitatcontrol.menu.wipe.sdk.upload.erase_cmd=erase_region "{build.rfcal_addr}" 0x4000
 habitatcontrol.menu.wipe.all=Entire Flash 
 habitatcontrol.menu.wipe.all.upload.erase_cmd=erase_flash
-habitatcontrol.menu.baud.3000000=3000000
-habitatcontrol.menu.baud.3000000.upload.speed=3000000
+habitatcontrol.menu.baud.2000000=2000000
+habitatcontrol.menu.baud.2000000.upload.speed=2000000
 habitatcontrol.menu.baud.921600=921600
 habitatcontrol.menu.baud.921600.upload.speed=921600
-
 ##############################################################'
 
 Write-Host "Stoping Arduino Processes"
 Stop-Process -Name mdns-discovery -ErrorAction SilentlyContinue
 Stop-Process -Name arduino-builder -ErrorAction SilentlyContinue
+
+
+Write-Host "Erasing Espressif path"
+Remove-Item -Recurse -Force -Path $espGitPath
 
 ################################### Update Compiler ###################################
 Write-Host "Updating GCC++ xtensa-lx106"

@@ -38,13 +38,9 @@
 
 #define HAS_PHY_CAPTURE 1
 #ifdef __cplusplus
-extern "C" {
+extern "C"
 #endif
-extern void (*phy_capture) (int netif_idx, const char* data, size_t len, int out, int success);
-#ifdef __cplusplus
-}
-#endif
-
+void (*phy_capture) (int netif_idx, const char* data, size_t len, int out, int success);
 
 /////////////////////////////////////////////////////////////////////////////
 #if ARDUINO

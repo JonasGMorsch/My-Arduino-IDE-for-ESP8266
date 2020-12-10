@@ -3,5 +3,5 @@
    "name": "toolchain-xtensa",
    "system": [ "windows_amd64" ],
    "url": "https://github.com/earlephilhower/esp-quick-toolchain",
-   "version": "5.01010.200706"
+   "version": "5.100200.200918"
 }

@@ -147,6 +147,12 @@ void loop() {
             {
                 ++parityErrors;
             }
+#elif defined(ESP8266)
+            // current ESP8266 API does not flag parity errors separately
+            if (repeater.hasRxError())
+            {
+                ++parityErrors;
+            }
 #endif
             ++rxCount;
 #ifdef HALFDUPLEX
@@ -175,7 +181,7 @@ void loop() {
 #ifndef HWLOOPBACK
         if (0 != (swSerialConfig & 070))
         {
-            logger.print(" ("); logger.print(parityErrors); logger.print(" parity errors)");
+            logger.print(" ("); logger.print(parityErrors); logger.println(" parity errors)");
         }
         else
 #endif
