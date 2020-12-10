@@ -11,7 +11,7 @@ $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
 ##############################################################
-habitatcontrol.name= Habitat Control V1.5
+habitatcontrol.name= Habitat Control V1.6
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -46,7 +46,7 @@ habitatcontrol.build.spiffs_end=0x3FA000
 habitatcontrol.build.spiffs_blocksize=8192
 habitatcontrol.build.exception_flags=-fexceptions
 habitatcontrol.build.stdcpp_lib=-lstdc++-exc
-habitatcontrol.build.mmuflags=-DMMU_IRAM_SIZE=0xC000 -DMMU_ICACHE_SIZE=0x4000
+habitatcontrol.build.mmuflags=-DMMU_IRAM_SIZE=0xC000 -DMMU_ICACHE_SIZE=0x4000 -DMMU_IRAM_HEAP
 habitatcontrol.build.waveform=
 habitatcontrol.menu.wipe.none=Sketch
 habitatcontrol.menu.wipe.none.upload.erase_cmd=
