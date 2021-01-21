@@ -1003,7 +1003,7 @@ namespace std
 #define _GLIBCXX_HAVE_MEMALIGN 1
 
 /* Define to 1 if you have the <memory.h> header file. */
-/* #undef _GLIBCXX_HAVE_MEMORY_H */
+#define _GLIBCXX_HAVE_MEMORY_H 1
 
 /* Define to 1 if you have the `modf' function. */
 /* #undef _GLIBCXX_HAVE_MODF */
@@ -1536,11 +1536,11 @@ namespace std
 
 /* Define if C99 functions or macros in <stdio.h> should be imported in
    <cstdio> in namespace std for C++98. */
-/* #undef _GLIBCXX98_USE_C99_STDIO */
+#define _GLIBCXX98_USE_C99_STDIO 1
 
 /* Define if C99 functions or macros in <stdlib.h> should be imported in
    <cstdlib> in namespace std for C++98. */
-/* #undef _GLIBCXX98_USE_C99_STDLIB */
+#define _GLIBCXX98_USE_C99_STDLIB 1
 
 /* Define if C99 functions or macros in <wchar.h> should be imported in
    <cwchar> in namespace std for C++98. */

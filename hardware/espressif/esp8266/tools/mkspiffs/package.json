@@ -3,5 +3,5 @@
    "name": "mkspiffs",
    "system": [ "windows_amd64" ],
    "url": "https://github.com/earlephilhower/esp-quick-toolchain",
-   "version": "5.100200.200918"
+   "version": "5.100200.201223"
 }

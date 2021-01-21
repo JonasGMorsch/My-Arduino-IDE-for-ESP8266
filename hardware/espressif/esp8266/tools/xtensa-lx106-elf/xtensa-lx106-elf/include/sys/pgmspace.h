@@ -60,27 +60,40 @@ extern "C" {
 // b3, b2, b1, b0
 //     w1,     w0
 
+// Cast `addr` to `const uint32_t*`, by discarding 2 LSBs (byte offset)
+#ifdef __cplusplus
+  #define __pgm_cast_u32ptr(addr) reinterpret_cast<const uint32_t*>(reinterpret_cast<uintptr_t>(addr) & ~3)
+#else
+  #define __pgm_cast_u32ptr(addr) (const uint32_t*)((uintptr_t)(addr) & ~3)
+#endif
+
+// Inline assembler: Adjust `word` to byte offset of `addr`
+#define __pgm_adjust_offset(word, addr, res) \
+  __asm__ ( \
+    "ssa8l\t%2\n\t"  /* SAR = (AR[`addr`] & 3) * 8; */ \
+    "srl\t%0, %1"    /* AR[`res`] = AR[`word`] >> SAR; */ \
+    : "=r"(res) : "r"(word), "r"(addr))
+
+// Inline assembler: Extract a "word" (32 bit) from adjacent two: `loword` and `hiword`,
+//                     according to byte offset of `addr`
+#define __pgm_extract_dword(loword, hiword, addr, res) \
+  __asm__ ( \
+    "ssa8l\t%3\n\t"    /* SAR = (AR[`addr`] & 3) * 8; */ \
+    "src\t%0, %2, %1"  /* AR[`res`] = (AR[`hiword`] << 32 | AR[`loword`]) >> SAR; */ \
+    : "=r"(res) : "r"(loword), "r"(hiword), "r"(addr))
+
+// Literature: Xtensa(R) Instruction Set Reference Manual,
+//               "SRC - Shift Right Combined" [p.528], "SRL - Shift Right Logical" [p.529]
+//               and "SSA8L - Set Shift Amount for LE Byte Shift" [p.532]
+
 #define pgm_read_with_offset(addr, res) \
-  __asm__( \
-    "extui\t%0, %1, 0, 2\n\t"  /* Extract offset within word (in bytes) */ \
-    "sub\t%1, %1, %0\n\t"      /* Subtract offset from addr, yielding an aligned address */ \
-    "l32i.n\t%1, %1, 0\n\t"    /* Load word from aligned address */ \
-    "ssa8l\t%0\n\t"            /* Prepare to shift by offset (in bits) */ \
-    "src\t%0, %1, %1"          /* Shift right; now the requested byte is the first one */ \
-    : "=r"(res), "+r"(addr))
+  __pgm_adjust_offset(*__pgm_cast_u32ptr(addr), addr, res)
 
 #define pgm_read_dword_with_offset(addr, res) \
   do { \
-    uint32_t temp; \
-    __asm__( \
-      "extui\t%0, %1, 0, 2\n\t"  /* Extract offset within word (in bytes) */ \
-      "sub\t%1, %1, %0\n\t"      /* Subtract offset from addr, yielding an aligned address */ \
-      "l32i.n\t%2, %1, 0\n\t"    /* Load 2 words */ \
-      "l32i.n\t%1, %1, 4\n\t"    /*     from aligned address */ \
-      "ssa8l\t%0\n\t"            /* Prepare to shift by offset (in bits) */ \
-      "src\t%0, %1, %2"          /* Shift right in order to extract the requested dword */ \
-      : "=r"(res), "+r"(addr), "=r"(temp)); \
-  } while(0)
+    const uint32_t* __ptr = __pgm_cast_u32ptr(addr); \
+    __pgm_extract_dword(__ptr[0], __ptr[1], addr, res); \
+  } while (0)
 
 static inline uint8_t pgm_read_byte_inlined(const void* addr) {
   uint32_t res;
