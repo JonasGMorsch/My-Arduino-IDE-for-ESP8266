@@ -46,7 +46,7 @@ habitatcontrol.build.spiffs_end=0x3FA000
 habitatcontrol.build.spiffs_blocksize=8192
 habitatcontrol.build.exception_flags=-fno-exceptions
 habitatcontrol.build.stdcpp_lib=-lstdc++
-habitatcontrol.build.mmuflags==-DMMU_IRAM_SIZE=0x8000 -DMMU_ICACHE_SIZE=0x8000
+habitatcontrol.build.mmuflags=-DMMU_IRAM_SIZE=0x8000 -DMMU_ICACHE_SIZE=0x8000
 habitatcontrol.menu.wipe.none=Sketch
 habitatcontrol.menu.wipe.none.upload.erase_cmd=
 habitatcontrol.menu.wipe.sdk=Sketch + WiFi Settings
