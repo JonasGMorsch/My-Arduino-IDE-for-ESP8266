@@ -3,5 +3,5 @@
    "name": "mklittlefs",
    "system": [ "windows_amd64" ],
    "url": "https://github.com/earlephilhower/esp-quick-toolchain",
-   "version": "5.100200.201223"
+   "version": "5.100200.210128"
 }

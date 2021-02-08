@@ -11,7 +11,7 @@ $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
 ##############################################################
-habitatcontrol.name= Habitat Control V2.0
+habitatcontrol.name= Habitat Control V2.1
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -27,7 +27,7 @@ habitatcontrol.build.variant=habitatcontrol
 habitatcontrol.build.mcu=esp8266
 habitatcontrol.build.core=esp8266
 habitatcontrol.build.spiffs_pagesize=256
-habitatcontrol.build.vtable_flags=-DVTABLES_IN_IRAM
+habitatcontrol.build.vtable_flags=-DVTABLES_IN_FLASH
 habitatcontrol.build.stacksmash_flags=-fstack-protector
 habitatcontrol.build.sslflags=-DBEARSSL_SSL_BASIC
 habitatcontrol.build.flash_mode=dio
@@ -47,6 +47,7 @@ habitatcontrol.build.spiffs_blocksize=8192
 habitatcontrol.build.exception_flags=-fno-exceptions
 habitatcontrol.build.stdcpp_lib=-lstdc++
 habitatcontrol.build.mmuflags=-DMMU_IRAM_SIZE=0x8000 -DMMU_ICACHE_SIZE=0x8000
+habitatcontrol.build.non32xferflags=
 habitatcontrol.menu.wipe.none=Sketch
 habitatcontrol.menu.wipe.none.upload.erase_cmd=
 habitatcontrol.menu.wipe.sdk=Sketch + WiFi Settings
@@ -55,8 +56,8 @@ habitatcontrol.menu.wipe.all=Entire Flash
 habitatcontrol.menu.wipe.all.upload.erase_cmd=erase_flash
 habitatcontrol.menu.baud.2000000=2000000
 habitatcontrol.menu.baud.2000000.upload.speed=2000000
-habitatcontrol.menu.baud.921600=921600
-habitatcontrol.menu.baud.921600.upload.speed=921600
+habitatcontrol.menu.baud.1000000=1000000
+habitatcontrol.menu.baud.1000000.upload.speed=1000000
 ##############################################################'
 
 Write-Host "Stoping Arduino Processes"
