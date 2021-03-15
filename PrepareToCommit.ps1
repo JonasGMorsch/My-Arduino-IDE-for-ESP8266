@@ -11,7 +11,7 @@ $arduinoMyConfigPath = "C:\Development\My-Arduino-IDE-CONFIGS"
 
 $habitatcontrolboard ='
 ##############################################################
-habitatcontrol.name= Habitat Control V2.1
+habitatcontrol.name= Habitat Control V2.2
 habitatcontrol.upload.tool=esptool
 habitatcontrol.upload.maximum_data_size=81920
 habitatcontrol.upload.maximum_size=1044464
@@ -29,7 +29,7 @@ habitatcontrol.build.core=esp8266
 habitatcontrol.build.spiffs_pagesize=256
 habitatcontrol.build.vtable_flags=-DVTABLES_IN_FLASH
 habitatcontrol.build.stacksmash_flags=-fstack-protector
-habitatcontrol.build.sslflags=-DBEARSSL_SSL_BASIC
+habitatcontrol.build.sslflags=
 habitatcontrol.build.flash_mode=dio
 habitatcontrol.build.flash_flags=-DFLASHMODE_DIO
 habitatcontrol.build.flash_freq=40
