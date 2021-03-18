@@ -2,7 +2,7 @@
 $espBetaPath = "$arduinoBetaPath\hardware\espressif"
 $boardBetaPath ="$espBetaPath\esp8266\boards.txt"
 
-$arduinoGitPath = "C:\Portable_Programs\My-Arduino-IDE-for-ESP8266"
+$arduinoGitPath = "C:\Development\My-Arduino-IDE-for-ESP8266"
 $espGitPath = "$arduinoGitPath\hardware\espressif"
 $boardGitPath ="$espGitPath\esp8266\boards.txt"
 
