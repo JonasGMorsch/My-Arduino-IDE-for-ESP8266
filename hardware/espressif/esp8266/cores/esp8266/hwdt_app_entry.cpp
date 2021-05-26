@@ -300,7 +300,7 @@ extern uint32_t stack_thunk_get_stack_bot() __attribute__((weak, alias("__zero_r
 #ifdef USE_IRAM
 #undef USE_IRAM
 #define USE_IRAM 1
-#define IRAM_MAYBE ICACHE_RAM_ATTR
+#define IRAM_MAYBE IRAM_ATTR
 
 #else
 #undef USE_IRAM
@@ -376,7 +376,7 @@ extern hwdt_info_t hwdt_info;
 #undef hwdt_info_
 #undef hwdt_info
 #undef HWDT_VERIFY_HWDT_INFO
-static_assert(sizeof(hwdt_info_t) == sizeof(LOCAL_HWDT_INFO_T), "Local and include verison of hwdt_info_t do not match.");
+static_assert(sizeof(hwdt_info_t) == sizeof(LOCAL_HWDT_INFO_T), "Local and include version of hwdt_info_t do not match.");
 #endif
 
 
@@ -411,7 +411,7 @@ static_assert(sizeof(hwdt_info_t) == sizeof(LOCAL_HWDT_INFO_T), "Local and inclu
 #define CONT_STACK_A16_SZ  (MK_ALIGN16_SZ(sizeof(cont_t)))
 /*
  * For WPS support, cont stack comes out of the user's heap address space.
- * The the NONOS-SDK stack address is initialized before tbe reserved ROM stack
+ * The NONOS-SDK stack address is initialized before the reserved ROM stack
  * space. In this configuration there is no extra 4K in the heap.
  * Memory map: 0x3FFE8000, ..., (CONT_STACK), ..., (SYS), (ROM_STACK), 0x4000000
  *
@@ -441,8 +441,8 @@ extern "C" {
 
 extern cont_t * get_noextra4k_g_pcont(void);
 
-cont_t * ICACHE_RAM_ATTR get_noextra4k_g_pcont(void) __attribute__((weak));
-cont_t * ICACHE_RAM_ATTR get_noextra4k_g_pcont(void) {
+cont_t * IRAM_ATTR get_noextra4k_g_pcont(void) __attribute__((weak));
+cont_t * IRAM_ATTR get_noextra4k_g_pcont(void) {
     return NULL;
 }
 
@@ -764,8 +764,8 @@ void adjust_uart_speed(uint32_t uart_divisor) {
      * stablilize, and let the remote receiver come to an idle state before
      * continuing.
      *
-     * Load a Rubout character for the final charcter shifting out to stop
-     * the last charcter from getting crunched during the speed change.
+     * Load a Rubout character for the final character shifting out to stop
+     * the last character from getting crunched during the speed change.
      *
      * The thinking is if the speed changes while shifting out, as long as the
      * start bit gets out before the change. The change will not be noticed
@@ -1027,7 +1027,7 @@ extern "C" void Cache_Read_Disable(void);
 extern "C" void Cache_Read_Enable(uint8_t map, uint8_t p, uint8_t v);
 
 #ifndef USE_IRAM
-static void ICACHE_RAM_ATTR __attribute__((noinline)) handle_hwdt_icache() __attribute__((used));
+static void IRAM_ATTR __attribute__((noinline)) handle_hwdt_icache() __attribute__((used));
 void handle_hwdt_icache() {
   Cache_Read_Enable(0, 0, ICACHE_SIZE_16);
   handle_hwdt();
@@ -1055,7 +1055,7 @@ void hwdt_pre_sdk_init(void) {
 #endif
 }
 
-static void ICACHE_RAM_ATTR __attribute__((noinline)) hwdt_pre_sdk_init_icache(void) __attribute__((used));
+static void IRAM_ATTR __attribute__((noinline)) hwdt_pre_sdk_init_icache(void) __attribute__((used));
 void hwdt_pre_sdk_init_icache(void) {
   Cache_Read_Enable(0, 0, ICACHE_SIZE_16);
 #ifdef DEBUG_ESP_HWDT_UART_SPEED
@@ -1154,7 +1154,7 @@ asm  (
 );
 
 #else
-void ICACHE_RAM_ATTR app_entry_start(void) {
+void IRAM_ATTR app_entry_start(void) {
 
 #ifdef USE_IRAM
     handle_hwdt();
@@ -1191,7 +1191,7 @@ void ICACHE_RAM_ATTR app_entry_start(void) {
     __builtin_unreachable();
 }
 
-void ICACHE_RAM_ATTR app_entry_redefinable(void) {
+void IRAM_ATTR app_entry_redefinable(void) {
     /*
      * There are 4 sections of code that share the stack starting near
      * 0x40000000.
