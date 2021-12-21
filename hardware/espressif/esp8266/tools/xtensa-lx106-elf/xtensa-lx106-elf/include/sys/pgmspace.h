@@ -112,8 +112,19 @@ static inline uint16_t pgm_read_word_inlined(const void* addr) {
 /* The ASM block doesn't care the type, so just pass in what C thinks is a float and return in custom fcn. */
 static inline float pgm_read_float_unaligned(const void* addr) {
   float res;
-  pgm_read_with_offset(addr, res);
+  pgm_read_dword_with_offset(addr, res);
   return res;
+}
+
+/* Use union evil magic to allow writing to 2 halves of double 8-byte quantity w/o generating a GCC warning. */
+static inline double pgm_read_double_unaligned(const void* addr) {
+  union {
+    double res;
+    uint32_t i[2];
+  } u;
+  pgm_read_dword_with_offset(addr, u.i[0]);
+  pgm_read_dword_with_offset(addr + 4, u.i[1]);
+  return u.res;
 }
 
 #define pgm_read_byte(addr)                pgm_read_byte_inlined(addr)
@@ -121,10 +132,12 @@ static inline float pgm_read_float_unaligned(const void* addr) {
 #ifdef __cplusplus
     #define pgm_read_dword_aligned(addr)   (*reinterpret_cast<const uint32_t*>(addr))
     #define pgm_read_float_aligned(addr)   (*reinterpret_cast<const float*>(addr))
+    #define pgm_read_double_aligned(addr)  (*reinterpret_cast<const double*>(addr))
     #define pgm_read_ptr_aligned(addr)     (*reinterpret_cast<const void* const*>(addr))
 #else
     #define pgm_read_dword_aligned(addr)   (*(const uint32_t*)(addr))
     #define pgm_read_float_aligned(addr)   (*(const float*)(addr))
+    #define pgm_read_double_aligned(addr)  (*(const double*)(addr))
     #define pgm_read_ptr_aligned(addr)     (*(const void* const*)(addr))
 #endif
 
@@ -148,11 +161,13 @@ static inline uint32_t pgm_read_dword_unaligned(const void *addr) {
     #define pgm_read_word(a)   pgm_read_word_unaligned(a)
     #define pgm_read_dword(a)  pgm_read_dword_unaligned(a)
     #define pgm_read_float(a)  pgm_read_float_unaligned(a)
+    #define pgm_read_double(a) pgm_read_double_unaligned(a)
     #define pgm_read_ptr(a)    pgm_read_ptr_unaligned(a)
 #else
     #define pgm_read_word(a)   pgm_read_word_aligned(a)
     #define pgm_read_dword(a)  pgm_read_dword_aligned(a)
     #define pgm_read_float(a)  pgm_read_float_aligned(a)
+    #define pgm_read_double(a) pgm_read_double_aligned(a)
     #define pgm_read_ptr(a)    pgm_read_ptr_aligned(a)
 #endif
 
@@ -160,11 +175,13 @@ static inline uint32_t pgm_read_dword_unaligned(const void *addr) {
 #define pgm_read_word_near(addr)        pgm_read_word(addr)
 #define pgm_read_dword_near(addr)       pgm_read_dword(addr)
 #define pgm_read_float_near(addr)       pgm_read_float(addr)
+#define pgm_read_double_near(addr)      pgm_read_double(addr)
 #define pgm_read_ptr_near(addr)         pgm_read_ptr(addr)
 #define pgm_read_byte_far(addr)         pgm_read_byte(addr)
 #define pgm_read_word_far(addr)         pgm_read_word(addr)
 #define pgm_read_dword_far(addr)        pgm_read_dword(addr)
 #define pgm_read_float_far(addr)        pgm_read_float(addr)
+#define pgm_read_double_far(addr)       pgm_read_double(addr)
 #define pgm_read_ptr_far(addr)          pgm_read_ptr(addr)
 
 #define _SFR_BYTE(n) (n)

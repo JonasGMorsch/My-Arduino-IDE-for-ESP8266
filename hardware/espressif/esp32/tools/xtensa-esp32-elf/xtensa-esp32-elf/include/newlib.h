@@ -33,6 +33,9 @@
    very restricted storage.  */
 #define _WANT_REENT_SMALL 1
 
+/* Verify _REENT_CHECK macros allocate memory successfully. */
+#define _REENT_CHECK_VERIFY 1
+
 /* Multibyte supported */
 /* #undef _MB_CAPABLE */
 
@@ -69,7 +72,7 @@
 #define _FSEEK_OPTIMIZATION 1
 
 /* Define if wide char orientation is supported.  */
-#define _WIDE_ORIENT 1
+/* #undef _WIDE_ORIENT */
 
 /* Define if unbuffered stream file optimization is supported.  */
 #define _UNBUF_STREAM_OPT 1
@@ -89,7 +92,7 @@
 /* #undef _NANO_FORMATTED_IO */
 
 /* Define if using retargetable functions for default lock routines.  */
-/* #undef _RETARGETABLE_LOCKING */
+#define _RETARGETABLE_LOCKING 1
 
 /* Define to use type long for time_t.  */
 #define _WANT_USE_LONG_TIME_T 1

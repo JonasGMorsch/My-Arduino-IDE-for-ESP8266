@@ -416,7 +416,10 @@ extern float hypotf (float, float);
    simply call the double functions.  On Cygwin the long double functions
    are implemented independently from newlib to be able to use optimized
    assembler functions despite using the Microsoft x86_64 ABI. */
-#if defined (_LDBL_EQ_DBL) || defined (__CYGWIN__)
+
+/* Espressif-specific: add stubs for long double to libm/common/*.c for riscv */
+#if defined (_LDBL_EQ_DBL) || defined (__CYGWIN__) || defined(__riscv)
+
 /* Reentrant ANSI C functions.  */
 #ifndef __math_68881
 extern long double atanl (long double);
@@ -568,41 +571,6 @@ extern int *__signgam (void);
 #define __signgam_r(ptr) _REENT_SIGNGAM(ptr)
 #endif /* __MISC_VISIBLE || __XSI_VISIBLE */
 
-#if __SVID_VISIBLE
-/* The exception structure passed to the matherr routine.  */
-/* We have a problem when using C++ since `exception' is a reserved
-   name in C++.  */
-#ifdef __cplusplus
-struct __exception
-#else
-struct exception
-#endif
-{
-  int type;
-  char *name;
-  double arg1;
-  double arg2;
-  double retval;
-  int err;
-};
-
-#ifdef __cplusplus
-extern int matherr (struct __exception *e);
-#else
-extern int matherr (struct exception *e);
-#endif
-
-/* Values for the type field of struct exception.  */
-
-#define DOMAIN 1
-#define SING 2
-#define OVERFLOW 3
-#define UNDERFLOW 4
-#define TLOSS 5
-#define PLOSS 6
-
-#endif /* __SVID_VISIBLE */
-
 /* Useful constants.  */
 
 #if __BSD_VISIBLE || __XSI_VISIBLE
@@ -642,8 +610,6 @@ extern int matherr (struct exception *e);
 enum __fdlibm_version
 {
   __fdlibm_ieee = -1,
-  __fdlibm_svid,
-  __fdlibm_xopen,
   __fdlibm_posix
 };
 
@@ -653,8 +619,6 @@ enum __fdlibm_version
 extern __IMPORT _LIB_VERSION_TYPE _LIB_VERSION;
 
 #define _IEEE_  __fdlibm_ieee
-#define _SVID_  __fdlibm_svid
-#define _XOPEN_ __fdlibm_xopen
 #define _POSIX_ __fdlibm_posix
 
 #endif /* __BSD_VISIBLE */

@@ -1,16 +1,16 @@
 #include "FS.h"
 //#include "SPIFFS.h" 
-#include "LITTLEFS.h"
+#include "LittleFS.h"
 #include <time.h> 
 #include <WiFi.h>
 
-#define SPIFFS LITTLEFS
+#define SPIFFS LittleFS
 
 /* This examples uses "quick re-define" of SPIFFS to run 
-   an existing sketch with LITTLEFS instead of SPIFFS
+   an existing sketch with LittleFS instead of SPIFFS
 
-   You only need to format LITTLEFS the first time you run a
-   test or else use the LITTLEFS plugin to create a partition
+   You only need to format LittleFS the first time you run a
+   test or else use the LittleFS plugin to create a partition
    https://github.com/lorol/arduino-esp32littlefs-plugin */
    
 #define FORMAT_LITTLEFS_IF_FAILED true
@@ -160,6 +160,10 @@ void setup(){
     Serial.println("IP address: ");
     Serial.println(WiFi.localIP());
     Serial.println("Contacting Time Server");
+    /*
+        Note: Bundled Arduino lwip supports only ONE ntp server, 2nd and 3rd options are silently ignored
+        see CONFIG_LWIP_DHCP_MAX_NTP_SERVERS define in ./tools/sdk/esp32/sdkconfig
+     */
 	configTime(3600*timezone, daysavetime*3600, "time.nist.gov", "0.pool.ntp.org", "1.pool.ntp.org");
 	struct tm tmstruct ;
     delay(2000);
@@ -169,7 +173,7 @@ void setup(){
     Serial.println("");
     
     if(!SPIFFS.begin(FORMAT_LITTLEFS_IF_FAILED)){
-        Serial.println("LITTLEFS Mount Failed");
+        Serial.println("LittleFS Mount Failed");
         return;
     }
 

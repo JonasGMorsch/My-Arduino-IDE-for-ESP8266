@@ -19,7 +19,7 @@ import gdb
 import os
 import os.path
 
-pythondir = '/workdir/xtensa-lx106-elf.win64/share/gcc-10.2.0/python'
+pythondir = '/workdir/xtensa-lx106-elf.win64/share/gcc-10.3.0/python'
 libdir = '/workdir/xtensa-lx106-elf.win64/xtensa-lx106-elf/lib'
 
 # This file might be loaded when there is no current objfile.  This

@@ -64,7 +64,7 @@ typedef __gnuc_va_list va_list;
 #endif
 
 #if __POSIX_VISIBLE >= 200809
-#include <xlocale.h>
+#include <sys/_locale.h>
 #endif
 
 _BEGIN_STD_C
@@ -126,7 +126,7 @@ wchar_t	*wcscpy (wchar_t *__restrict, const wchar_t *__restrict);
 #if __POSIX_VISIBLE >= 200809
 wchar_t	*wcpcpy (wchar_t *__restrict,
 				 const wchar_t *__restrict);
-wchar_t	*wcsdup (const wchar_t *);
+wchar_t	*wcsdup (const wchar_t *) __malloc_like __result_use_check;
 #endif
 wchar_t	*_wcsdup_r (struct _reent *, const wchar_t * );
 size_t	wcscspn (const wchar_t *, const wchar_t *);
@@ -208,9 +208,7 @@ long long _wcstoll_r (struct _reent *, const wchar_t *, wchar_t **, int);
 unsigned long _wcstoul_r (struct _reent *, const wchar_t *, wchar_t **, int);
 unsigned long long _wcstoull_r (struct _reent *, const wchar_t *, wchar_t **, int);
 #if __ISO_C_VISIBLE >= 1999
-#ifdef _LDBL_EQ_DBL
 long double wcstold (const wchar_t *, wchar_t **);
-#endif /* _LDBL_EQ_DBL */
 #endif
 
 #if __GNU_VISIBLE
@@ -223,9 +221,7 @@ unsigned long long wcstoull_l (const wchar_t *__restrict, wchar_t **__restrict,
 			       int, locale_t);
 double wcstod_l (const wchar_t *, wchar_t **, locale_t);
 float wcstof_l (const wchar_t *, wchar_t **, locale_t);
-#ifdef _LDBL_EQ_DBL
 long double wcstold_l (const wchar_t *, wchar_t **, locale_t);
-#endif /* _LDBL_EQ_DBL */
 #endif
 
 wint_t fgetwc (__FILE *);

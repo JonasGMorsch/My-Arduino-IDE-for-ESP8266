@@ -425,7 +425,7 @@ extern "C" {
 #endif
 
 #define _POSIX_ADVISORY_INFO			200809L
-/* #define _POSIX_ASYNCHRONOUS_IO		    -1 */
+#define _POSIX_ASYNCHRONOUS_IO			200809L
 #define _POSIX_BARRIERS				200809L
 #define _POSIX_CHOWN_RESTRICTED			     1
 #define _POSIX_CLOCK_SELECTION			200809L
@@ -521,14 +521,20 @@ extern "C" {
 /* #define _XOPEN_UNIX				    -1 */
 #endif /* __XSI_VISIBLE */
 
-/* The value corresponds to UNICODE version 5.2, which is the current
-   state of newlib's wide char conversion functions. */
-#define __STDC_ISO_10646__ 200910L
+/*
+ * newlib's wide char conversion functions were updated on
+ *	2019-01-12
+ * to UNICODE version:
+ *	11.0.0 released 2018-06-05
+ */
+#define __STDC_ISO_10646__ 201806L
 
 #endif /* __CYGWIN__ */
 
-/* ESP-specific */
-#ifdef __XTENSA__
+/* ESP-specific.
+ * TODO: introduce 'esp-idf' sys subdirectory, provide custom features.h there.
+ */
+#if defined(__XTENSA__) || defined(__riscv)
 
 #define _POSIX_THREADS                          1
 #define _POSIX_TIMEOUTS                         1
@@ -537,7 +543,7 @@ extern "C" {
 #define _POSIX_CLOCK_SELECTION                  200112L
 #define _UNIX98_THREAD_MUTEX_ATTRIBUTES         1
 
-#endif /* __XTENSA__ */
+#endif /* ESP specific */
 
 #ifdef __cplusplus
 }

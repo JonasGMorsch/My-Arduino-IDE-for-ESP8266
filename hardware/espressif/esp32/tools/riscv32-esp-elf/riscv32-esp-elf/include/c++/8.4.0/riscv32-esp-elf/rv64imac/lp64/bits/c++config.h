@@ -1401,7 +1401,7 @@ namespace std
 
 /* Define if C99 functions or macros in <wchar.h> should be imported in
    <cwchar> in namespace std for C++11. */
-/* #undef _GLIBCXX11_USE_C99_WCHAR */
+#define _GLIBCXX11_USE_C99_WCHAR 1
 
 /* Define if C99 functions in <complex.h> should be used in <complex> for
    C++98. Using compiler builtins for these functions requires corresponding
@@ -1422,7 +1422,7 @@ namespace std
 
 /* Define if C99 functions or macros in <wchar.h> should be imported in
    <cwchar> in namespace std for C++98. */
-/* #undef _GLIBCXX98_USE_C99_WCHAR */
+#define _GLIBCXX98_USE_C99_WCHAR 1
 
 /* Define if the compiler supports C++11 atomics. */
 /* #undef _GLIBCXX_ATOMIC_BUILTINS */
@@ -1512,7 +1512,7 @@ namespace std
 
 /* Define if C99 functions or macros in <math.h> should be imported in
    <tr1/cmath> in namespace std::tr1. */
-/* #undef _GLIBCXX_USE_C99_MATH_TR1 */
+#define _GLIBCXX_USE_C99_MATH_TR1 1
 
 /* Define if C99 types in <stdint.h> should be imported in <tr1/cstdint> in
    namespace std::tr1. */
