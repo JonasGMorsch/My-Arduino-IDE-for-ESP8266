@@ -32,6 +32,7 @@ author: d. gauchard
 #include "glue.h"
 #include "uprint.h"
 #include "lwip-helper.h"
+#include "lwip/prot/dhcp.h"
 
 #include "lwipopts.h"
 #include "lwip/err.h"
@@ -51,8 +52,16 @@ author: d. gauchard
 #include "lwip-git.h"
 
 // this is dhcpserver taken from lwip-1.4-espressif
-#include "lwip/apps-esp/dhcpserver.h"
+// arduino will use its own sources based on the above
+// this source only needs dhcps_start() prototype
+//#include "lwip/apps-esp/dhcpserver.h"
+void dhcps_start(struct ip_info *info);
+
 // this is espconn taken from lwip-1.4-espressif
+// espconn is probably a modified version of lwIP's netconn
+// note:
+//  arduino needs to call espconn_init()
+//  esp-open-sdk always calls it
 #include "lwip/apps-esp/espconn.h"
 
 #define DBG "GLUE: "
@@ -61,6 +70,7 @@ author: d. gauchard
 //#define netif_ap  (&netif_git[SOFTAP_IF])
 
 struct netif netif_git[2];
+int netif_enabled[2] = { 0, 0 };
 const char netif_name[2][8] = { "station", "soft-ap" };
 
 int __attribute__((weak)) doprint_allow = 0; // for doprint()
@@ -188,6 +198,7 @@ err_glue_t esp2glue_dhcp_start (int netif_idx)
 	// calls netif_sta_status_callback() - if applicable (STA)
 	netif_set_up(&netif_git[netif_idx]);
 
+#if LWIP_NETIF_HOSTNAME
 	// Update to latest esp hostname before starting dhcp client,
 	// 	because this name is provided to the dhcp server.
 	// Until proven wrong, dhcp client is the only code
@@ -197,6 +208,7 @@ err_glue_t esp2glue_dhcp_start (int netif_idx)
 	// XXX to check: is wifi_station_get_hostname()
 	// 	returning a const pointer once _set_hostname is called?
 	netif_git[netif_idx].hostname = wifi_station_get_hostname();
+#endif
 
 	err_t err = dhcp_start(&netif_git[netif_idx]);
 #if LWIP_IPV6 && LWIP_IPV6_DHCP6_STATELESS
@@ -300,6 +312,7 @@ void esp2glue_netif_set_default (int netif_idx)
 static void netif_sta_status_callback (struct netif* netif)
 {
 	// address can be set or reset/any (=0)
+	// netif is netif_sta
 
 	uprint(DBG "netif status callback:\n");
 	new_display_netif(netif);
@@ -307,12 +320,13 @@ static void netif_sta_status_callback (struct netif* netif)
 	// tell ESP that link is updated
 	glue2esp_ifupdown(netif->num, ip_2_ip4(&netif->ip_addr)->addr, ip_2_ip4(&netif->netmask)->addr, ip_2_ip4(&netif->gw)->addr);
 
-	if (   netif->flags & NETIF_FLAG_UP
-	    && netif == netif_sta)
+	if (netif->flags & NETIF_FLAG_UP)
 	{
-		// this is our default route
-		netif_set_default(netif);
-			
+		if ((netif_default == NULL) && !ip_addr_isany(&netif->gw)) {
+			// STA interface can be our default route if there is currently none and if there is a valid gw address
+			netif_set_default(netif);
+		}
+
 		// If we have a valid address of any type restart SNTP
 		bool valid_address = ip_2_ip4(&netif->ip_addr)->addr;
 
@@ -327,6 +341,11 @@ static void netif_sta_status_callback (struct netif* netif)
 			sntp_stop();
 			sntp_init();
 		}
+	}
+	else
+	{
+	    if (netif_default == netif)
+	        netif_set_default(NULL);
 	}
 }
 
@@ -344,7 +363,9 @@ static void netif_init_common (struct netif* netif)
 	netif->ip6_autoconfig_enabled = 1;
 #endif
 	
+#if LWIP_NETIF_HOSTNAME
 	netif->hostname = wifi_station_get_hostname();
+#endif
 	netif->chksum_flags = NETIF_CHECKSUM_ENABLE_ALL;
 	// netif->mtu given by glue
 }
@@ -401,7 +422,9 @@ void esp2glue_netif_update (int netif_idx, uint32_t ip, uint32_t mask, uint32_t 
 		netif->flags &= ~NETIF_FLAG_UP;
 
 	netif->mtu = mtu;
+#if LWIP_NETIF_HOSTNAME
 	netif->hostname = wifi_station_get_hostname();
+#endif
 	ip4_addr_t aip = { ip }, amask = { mask }, agw = { gw };
 	netif_set_addr(&netif_git[netif_idx], &aip, &amask, &agw);
 	esp2glue_netif_set_up1down0(netif_idx, 1);
@@ -483,6 +506,13 @@ void esp2glue_netif_set_up1down0 (int netif_idx, int up1_or_down0)
 		netif_set_link_up(netif);
 		//netif_set_up(netif); // unwanted call to netif_sta_status_callback()
 		netif->flags |= NETIF_FLAG_UP;
+#if ARDUINO
+		if (!netif_enabled[netif_idx])
+		{
+		    netif_enabled[netif_idx] = 1;
+		    netif_status_changed(netif);
+		}
+#endif
 	}
 	else
 	{
@@ -501,6 +531,13 @@ void esp2glue_netif_set_up1down0 (int netif_idx, int up1_or_down0)
 
 		if (netif_default == &netif_git[netif_idx])
 			netif_set_default(NULL);
+#if ARDUINO
+		if (netif_enabled[netif_idx])
+		{
+		    netif_enabled[netif_idx] = 0;
+		    netif_status_changed(netif);
+		}
+#endif
 	}
 }
 
@@ -518,3 +555,56 @@ LWIP_ERR_T lwip_unhandled_packet (struct pbuf* pbuf, struct netif* netif)
 	(void)netif;
 	return ERR_ARG;
 }
+
+#if ARDUINO
+
+void netif_status_changed (struct netif*) __attribute__((weak));
+void netif_status_changed (struct netif* netif)
+{
+    (void)netif;
+}
+
+void lwip_hook_dhcp_parse_option(struct netif *netif, struct dhcp *dhcp, int state, struct dhcp_msg *msg,
+                                 int msg_type, int option, int option_len, struct pbuf *pbuf,
+                                 int option_value_offset) __attribute__((weak));
+
+void lwip_hook_dhcp_parse_option(struct netif *netif, struct dhcp *dhcp, int state, struct dhcp_msg *msg,
+                                 int msg_type, int option, int option_len, struct pbuf *pbuf,
+                                 int option_value_offset)
+{
+    (void)netif;
+    (void)dhcp;
+    (void)state;
+    (void)msg;
+    (void)msg_type;
+    (void)option;
+    (void)option_len;
+    (void)pbuf;
+    (void)option_value_offset;
+    uprint(DBG "unhandled dhcp option in lwip_hook_dhcp_parse_option()\n");
+}
+
+void lwip_hook_dhcp_amend_options(struct netif *netif, struct dhcp *dhcp, int state, struct dhcp_msg *msg,
+                                  int msg_type, u16 *option_len_ptr)
+{
+    (void)dhcp;
+    (void)state;
+    (void)msg_type;
+
+    // amend default Client-Identifier
+    // {intf.id} {intf.mac} => {01}:{AA:BB:CC:11:22:33}
+    {
+        size_t i;
+
+        msg->options[(*option_len_ptr)++] = DHCP_OPTION_CLIENT_ID;
+        msg->options[(*option_len_ptr)++] = 1 + netif->hwaddr_len;
+        msg->options[(*option_len_ptr)++] = 0x01;
+
+        for (i = 0; i < netif->hwaddr_len; ++i) {
+            msg->options[(*option_len_ptr)++] = netif->hwaddr[i];
+        }
+    }
+}
+
+
+#endif // ARDUINO

@@ -13,7 +13,7 @@ appropriate backend.
 It is released under a free software license, see LICENSE_ for more
 details.
 
-Copyright (C) 2001-2016 Chris Liechti <cliechti(at)gmx.net>
+Copyright (C) 2001-2020 Chris Liechti <cliechti(at)gmx.net>
 
 Other pages (online)
 
@@ -75,6 +75,21 @@ Using the `python`/`python3` executable of the desired version (2.7/3.x).
 
 Developers also may be interested to get the source archive, because it
 contains examples, tests and the this documentation.
+
+From Conda
+----------
+pySerial can be installed from Conda::
+
+    conda install pyserial
+    
+    or
+    
+    conda install -c conda-forge pyserial
+    
+Currently the default conda channel will provide version 3.4 whereas the
+conda-forge channel provides the current 3.x version.
+
+Conda: https://www.continuum.io/downloads
 
 From source (zip/tar.gz or checkout)
 ------------------------------------

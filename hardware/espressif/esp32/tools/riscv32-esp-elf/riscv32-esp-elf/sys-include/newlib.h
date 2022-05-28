@@ -43,7 +43,7 @@
 #define _MB_LEN_MAX 1
 
 /* ICONV enabled */
-/* #undef _ICONV_ENABLED */
+#define _ICONV_ENABLED 1
 
 /* Enable ICONV external CCS files loading capabilities */
 /* #undef _ICONV_ENABLE_EXTERNAL_CCS */

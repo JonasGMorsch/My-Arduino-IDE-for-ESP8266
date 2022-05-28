@@ -2,6 +2,7 @@
  * Testing block device, wraps filebd and rambd while providing a bunch
  * of hooks for testing littlefs in various conditions.
  *
+ * Copyright (c) 2022, The littlefs authors.
  * Copyright (c) 2017, Arm Limited. All rights reserved.
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -207,7 +208,7 @@ int lfs_testbd_prog(const struct lfs_config *cfg, lfs_block_t block,
         bd->power_cycles -= 1;
         if (bd->power_cycles == 0) {
             // sync to make sure we persist the last changes
-            assert(lfs_testbd_rawsync(cfg) == 0);
+            LFS_ASSERT(lfs_testbd_rawsync(cfg) == 0);
             // simulate power loss
             exit(33);
         }
@@ -254,7 +255,7 @@ int lfs_testbd_erase(const struct lfs_config *cfg, lfs_block_t block) {
         bd->power_cycles -= 1;
         if (bd->power_cycles == 0) {
             // sync to make sure we persist the last changes
-            assert(lfs_testbd_rawsync(cfg) == 0);
+            LFS_ASSERT(lfs_testbd_rawsync(cfg) == 0);
             // simulate power loss
             exit(33);
         }

@@ -39,7 +39,7 @@
 #include "uzlib.h"
 
 /* produce decompressed output in chunks of this size */
-/* defauly is to decompress byte by byte; can be any other length */
+/* default is to decompress byte by byte; can be any other length */
 #define OUT_CHUNK_SIZE 1
 
 void exit_error(const char *what)

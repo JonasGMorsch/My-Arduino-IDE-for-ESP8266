@@ -36,7 +36,7 @@ Native ports
             :const:`STOPBITS_TWO`
 
         :param float timeout:
-            Set a read timeout value.
+            Set a read timeout value in seconds.
 
         :param bool xonxoff:
             Enable software flow control.
@@ -48,7 +48,7 @@ Native ports
             Enable hardware (DSR/DTR) flow control.
 
         :param float write_timeout:
-            Set a write timeout value.
+            Set a write timeout value in seconds.
 
         :param float inter_byte_timeout:
             Inter-character timeout, :const:`None` to disable (default).
@@ -157,6 +157,22 @@ Native ports
             Returns an instance of :class:`bytes` when available (Python 2.6
             and newer) and :class:`str` otherwise.
 
+    .. method:: read_until(expected=LF, size=None)
+
+        :param expected: The byte string to search for.
+        :param size: Number of bytes to read.
+        :return: Bytes read from the port.
+        :rtype: bytes
+
+        Read until an expected sequence is found ('\\n' by default), the size
+        is exceeded or until timeout occurs. If a timeout is set it may
+        return less characters as requested. With no timeout it will block
+        until the requested number of bytes is read.
+
+        .. versionchanged:: 2.5
+            Returns an instance of :class:`bytes` when available (Python 2.6
+            and newer) and :class:`str` otherwise.
+
     .. method:: write(data)
 
         :param data: Data to send.
@@ -168,7 +184,7 @@ Native ports
 
         Write the bytes *data* to the port. This should be of type ``bytes``
         (or compatible such as ``bytearray`` or ``memoryview``). Unicode
-        strings must be encoded (e.g. ``'hello'.encode('utf-8'``).
+        strings must be encoded (e.g. ``'hello'.encode('utf-8')``.
 
     .. versionchanged:: 2.5
             Accepts instances of :class:`bytes` and :class:`bytearray` when
@@ -221,7 +237,7 @@ Native ports
 
     .. method:: send_break(duration=0.25)
 
-        :param float duration: Time to activate the BREAK condition.
+        :param float duration: Time in seconds, to activate the BREAK condition.
 
         Send break condition. Timed, returns to idle state after given
         duration.
@@ -243,7 +259,7 @@ Native ports
         :type: bool
 
         Set RTS line to specified logic level. It is possible to assign this
-        value before opening the serial port, then the value is applied uppon
+        value before opening the serial port, then the value is applied upon
         :meth:`open` (with restrictions, see :meth:`open`).
 
     .. attribute:: dtr
@@ -253,7 +269,7 @@ Native ports
         :type: bool
 
         Set DTR line to specified logic level. It is possible to assign this
-        value before opening the serial port, then the value is applied uppon
+        value before opening the serial port, then the value is applied upon
         :meth:`open` (with restrictions, see :meth:`open`).
 
     Read-only attributes:
@@ -464,6 +480,18 @@ Native ports
         number of bytes read.
 
         .. versionadded:: 2.5
+
+    .. method:: readline(size=-1)
+
+        Provided via :meth:`io.IOBase.readline`
+
+    .. method:: readlines(hint=-1)
+
+        Provided via :meth:`io.IOBase.readlines`
+
+    .. method:: writelines(lines)
+
+        Provided via :meth:`io.IOBase.writelines`
 
     The port settings can be read and written as dictionary. The following
     keys are supported: ``write_timeout``, ``inter_byte_timeout``,
@@ -706,8 +734,9 @@ Native ports
 
 
 Implementation detail: some attributes and functions are provided by the
-class :class:`SerialBase` and some by the platform specific class and
-others by the base class mentioned above.
+class :class:`serial.SerialBase` which inherits from :class:`io.RawIOBase`
+and some by the platform specific class and others by the base class
+mentioned above.
 
 
 RS485 support

@@ -26,7 +26,7 @@ a Wi-Fi network.
     :width: 520
     :figclass: align-center
 
-This mode can be used for serving a HTTP or HTTPS server inside the ESP32, for example.
+This mode can be used for serving an HTTP or HTTPS server inside the ESP32, for example.
 
 Working as STA
 **************
@@ -38,12 +38,63 @@ The STA mode is used to connect the ESP32 to a Wi-Fi network, provided by an Acc
     :width: 520
     :figclass: align-center
 
-If you need to connect your project to the Internet, this is the mode you are looking for.
+This is the mode to be used if you want to connect your project to the Internet.
 
 API Description
 ---------------
 
-Here is the description about the WiFi API.
+Here is the description of the WiFi API.
+
+Common API
+----------
+
+Here are the common APIs that are used for both modes, AP and STA.
+
+useStaticBuffers
+****************
+
+This function is used to set the memory allocation mode for the Wi-Fi buffers.
+
+.. code-block:: arduino
+
+    static void useStaticBuffers(bool bufferMode);
+
+* Set ``true`` to use the Wi-Fi buffers memory allocation as **static**.
+* Set ``false`` to set the buffers memory allocation to **dynamic**.
+
+The use of dynamic allocation is recommended to save memory and reduce resources usage. However, the dynamic performs slightly slower than the static allocation.
+Use static allocation if you want to have more performance and if your application is multi-tasking.
+
+By default, the memory allocation will be set to **dynamic** if this function is not being used.
+
+setDualAntennaConfig
+********************
+
+Configures the Dual antenna functionallity. This function should be used only on the **ESP32-WROOM-DA** module or any other ESP32 with RF switch.
+
+.. code-block:: arduino
+
+    bool setDualAntennaConfig(uint8_t gpio_ant1, uint8_t gpio_ant2, wifi_rx_ant_t rx_mode, wifi_tx_ant_t tx_mode);
+
+
+* ``gpio_ant1`` Configure the GPIO number for the antenna 1 connected to the RF switch (default ``GPIO2`` on ESP32-WROOM-DA)
+* ``gpio_ant2`` Configure the GPIO number for the antenna 2 connected to the RF switch (default ``GPIO25`` on ESP32-WROOM-DA)
+* ``rx_mode`` Set the RX antenna mode. See wifi_rx_ant_t for the options.
+* ``tx_mode`` Set the TX antenna mode. See wifi_tx_ant_t for the options.
+
+Return ``true`` if the configuration was successful.
+
+For the ``rx_mode`` you can use the following configuration:
+
+* ``WIFI_RX_ANT0`` Selects the antenna 1 for all RX activity.
+* ``WIFI_RX_ANT1`` Selects the antenna 2 for all RX activity.
+* ``WIFI_RX_ANT_AUTO``  Selects the antenna for RX automatically.
+
+For the ``tx_mode`` you can use the following configuration:
+
+* ``WIFI_TX_ANT0`` Selects the antenna 1 for all TX activity.
+* ``WIFI_TX_ANT1`` Selects the antenna 2 for all TX activity.
+* ``WIFI_TX_ANT_AUTO`` Selects the antenna for TX automatically.
 
 WiFiAP
 ------

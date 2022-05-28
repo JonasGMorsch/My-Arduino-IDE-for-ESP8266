@@ -102,8 +102,8 @@ public:
     /// @param invert true: uses invert line level logic
     /// @param bufCapacity the capacity for the received bytes buffer
     /// @param isrBufCapacity 0: derived from bufCapacity. The capacity of the internal asynchronous
-    ///	       bit receive buffer, a suggested size is bufCapacity times the sum of
-    ///	       start, data, parity and stop bit count.
+    ///        bit receive buffer, a suggested size is bufCapacity times the sum of
+    ///        start, data, parity and stop bit count.
     void begin(uint32_t baud, SoftwareSerialConfig config,
         int8_t rxPin, int8_t txPin, bool invert,
         int bufCapacity = 64, int isrBufCapacity = 0);
@@ -122,19 +122,25 @@ public:
     uint32_t baudRate();
     /// Transmit control pin.
     void setTransmitEnablePin(int8_t txEnablePin);
-    /// Enable or disable interrupts during tx.
+    /// Enable (default) or disable interrupts during tx.
     void enableIntTx(bool on);
+    /// Enable (default) or disable internal rx GPIO pullup.
+    void enableRxGPIOPullup(bool on);
 
     bool overflow();
 
     int available() override;
+#if defined(ESP8266)
+    int availableForWrite() override {
+#else
     int availableForWrite() {
+#endif
         if (!m_txValid) return 0;
         return 1;
     }
     int peek() override;
     int read() override;
-    /// @returns The verbatim parity bit associated with the last read() or peek() call
+    /// @returns The verbatim parity bit associated with the last successful read() or peek() call
     bool readParity()
     {
         return m_lastReadParity;
@@ -152,9 +158,13 @@ public:
         return (0x9669 >> byte) & 1;
     }
     /// The read(buffer, size) functions are non-blocking, the same as readBytes but without timeout
-    size_t read(uint8_t* buffer, size_t size);
+    int read(uint8_t* buffer, size_t size)
+#if defined(ESP8266)
+        override
+#endif
+        ;
     /// The read(buffer, size) functions are non-blocking, the same as readBytes but without timeout
-    size_t read(char* buffer, size_t size) {
+    int read(char* buffer, size_t size) {
         return read(reinterpret_cast<uint8_t*>(buffer), size);
     }
     /// @returns The number of bytes read into buffer, up to size. Times out if the limit set through
@@ -201,9 +211,11 @@ public:
     using Print::write;
 
 private:
-    // If sync is false, it's legal to exceed the deadline, for instance,
+    // It's legal to exceed the deadline, for instance,
     // by enabling interrupts.
-    void preciseDelay(bool sync);
+    void lazyDelay();
+    // Synchronous precise delay
+    void preciseDelay();
     // If withStopBit is set, either cycle contains a stop bit.
     // If dutyCycle == 0, the level is not forced to HIGH.
     // If offCycle == 0, the level remains unchanged from dutyCycle.
@@ -211,16 +223,29 @@ private:
         uint32_t dutyCycle, uint32_t offCycle, bool withStopBit);
     bool isValidGPIOpin(int8_t pin);
     bool isValidRxGPIOpin(int8_t pin);
+    bool isValidTxGPIOpin(int8_t pin);
+    // result is only defined for a valid Rx GPIO pin
+    bool hasRxGPIOPullUp(int8_t pin);
+    // safely set the pin mode for the Rx GPIO pin
+    void setRxGPIOPullUp();
     /* check m_rxValid that calling is safe */
     void rxBits();
-    void rxBits(const uint32_t& isrCycle);
+    void rxBits(const uint32_t isrCycle);
+    static void disableInterrupts();
+    static void restoreInterrupts();
 
     static void rxBitISR(SoftwareSerial* self);
     static void rxBitSyncISR(SoftwareSerial* self);
 
     // Member variables
     int8_t m_rxPin = -1;
+    volatile uint32_t* m_rxReg;
+    uint32_t m_rxBitMask;
     int8_t m_txPin = -1;
+#if !defined(ESP8266)
+    volatile uint32_t* m_txReg;
+#endif
+    uint32_t m_txBitMask;
     int8_t m_txEnablePin = -1;
     uint8_t m_dataBits;
     bool m_oneWire;
@@ -232,6 +257,7 @@ private:
     /// PDU bits include data, parity and stop bits; the start bit is not counted.
     uint8_t m_pduBits;
     bool m_intTxEnabled;
+    bool m_rxGPIOPullupEnabled;
     SoftwareSerialParity m_parityMode;
     uint8_t m_stopBits;
     bool m_lastReadParity;
@@ -239,16 +265,21 @@ private:
     uint32_t m_bitCycles;
     uint8_t m_parityInPos;
     uint8_t m_parityOutPos;
-    int8_t m_rxCurBit; // 0 thru (m_pduBits - m_stopBits - 1): data/parity bits. -1: start bit. (m_pduBits - 1): stop bit.
+    int8_t m_rxLastBit; // 0 thru (m_pduBits - m_stopBits - 1): data/parity bits. -1: start bit. (m_pduBits - 1): stop bit.
     uint8_t m_rxCurByte = 0;
     std::unique_ptr<circular_queue<uint8_t> > m_buffer;
     std::unique_ptr<circular_queue<uint8_t> > m_parityBuffer;
     uint32_t m_periodStart;
     uint32_t m_periodDuration;
-    uint32_t m_savedPS = 0;
+#ifndef ESP32
+    static uint32_t m_savedPS;
+#else
+    static portMUX_TYPE m_interruptsMux;
+#endif
     // the ISR stores the relative bit times in the buffer. The inversion corrected level is used as sign bit (2's complement):
     // 1 = positive including 0, 0 = negative.
-    std::unique_ptr<circular_queue<uint32_t> > m_isrBuffer;
+    std::unique_ptr<circular_queue<uint32_t, SoftwareSerial*> > m_isrBuffer;
+    const Delegate<void(uint32_t&&), SoftwareSerial*> m_isrBufferForEachDel = { [](SoftwareSerial* self, uint32_t&& isrCycle) { self->rxBits(isrCycle); }, this };
     std::atomic<bool> m_isrOverflow;
     uint32_t m_isrLastCycle;
     bool m_rxCurParity = false;

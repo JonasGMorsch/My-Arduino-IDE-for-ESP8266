@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #elif defined(ESP32)
 #include <esp_attr.h>
 #else
-#define ICACHE_RAM_ATTR
 #define IRAM_ATTR
 #endif
 
@@ -341,7 +340,6 @@ namespace delegate
             }
 
         protected:
-            enum { FUNC, FP, FPA } kind;
             union {
                 FunctionType functional;
                 FunPtr fn;
@@ -350,6 +348,7 @@ namespace delegate
                     A obj;
                 };
             };
+            enum { FUNC, FP, FPA } kind;
         };
 #else
         template<typename A, typename R, typename... P>
@@ -421,10 +420,10 @@ namespace delegate
                 DelegatePImpl::fn = fn;
             }
 
-            template<typename F> DelegatePImpl(F fn)
+            template<typename F> DelegatePImpl(F functional)
             {
                 kind = FP;
-                DelegatePImpl::fn = std::forward<F>(fn);
+                fn = std::forward<F>(functional);
             }
 
             DelegatePImpl& operator=(const DelegatePImpl& del)
@@ -551,12 +550,12 @@ namespace delegate
             }
 
         protected:
-            enum { FP, FPA } kind;
             union {
                 FunPtr fn;
                 FunAPtr fnA;
             };
             A obj;
+            enum { FP, FPA } kind;
         };
 #endif
 
@@ -758,11 +757,11 @@ namespace delegate
             }
 
         protected:
-            enum { FUNC, FP } kind;
             union {
                 FunctionType functional;
                 FunPtr fn;
             };
+            enum { FUNC, FP } kind;
         };
 #else
         template<typename R, typename... P>
@@ -1141,7 +1140,6 @@ namespace delegate
             }
 
         protected:
-            enum { FUNC, FP, FPA } kind;
             union {
                 FunctionType functional;
                 FunPtr fn;
@@ -1150,6 +1148,7 @@ namespace delegate
                     A obj;
                 };
             };
+            enum { FUNC, FP, FPA } kind;
         };
 #else
         template<typename A, typename R>
@@ -1350,12 +1349,12 @@ namespace delegate
             }
 
         protected:
-            enum { FP, FPA } kind;
             union {
                 FunPtr fn;
                 FunAPtr fnA;
             };
             A obj;
+            enum { FP, FPA } kind;
         };
 #endif
 
@@ -1557,11 +1556,11 @@ namespace delegate
             }
 
         protected:
-            enum { FUNC, FP } kind;
             union {
                 FunctionType functional;
                 FunPtr fn;
             };
+            enum { FUNC, FP } kind;
         };
 #else
         template<typename R>
@@ -1691,7 +1690,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegatePImpl<A, R, P...>::DelegatePImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegatePImpl<A, R, P...>::DelegatePImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegatePImpl<A, R, P...>::DelegatePImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegatePImpl<A, R, P...>::operator=(del);
@@ -1770,7 +1769,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegatePImpl<A*, R, P...>::DelegatePImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegatePImpl<A*, R, P...>::DelegatePImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegatePImpl<A*, R, P...>::DelegatePImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegatePImpl<A*, R, P...>::operator=(del);
@@ -1826,7 +1825,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegatePImpl<void, R, P...>::DelegatePImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegatePImpl<void, R, P...>::DelegatePImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegatePImpl<void, R, P...>::DelegatePImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegatePImpl<void, R, P...>::operator=(del);
@@ -1887,7 +1886,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegateImpl<A, R>::DelegateImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegateImpl<A, R>::DelegateImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegateImpl<A, R>::DelegateImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegateImpl<A, R>::operator=(del);
@@ -1966,7 +1965,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegateImpl<A*, R>::DelegateImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegateImpl<A*, R>::DelegateImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegateImpl<A*, R>::DelegateImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegateImpl<A*, R>::operator=(del);
@@ -2022,7 +2021,7 @@ namespace delegate
 
             Delegate(FunPtr fn) : detail::DelegateImpl<void, R>::DelegateImpl(fn) {}
 
-            template<typename F> Delegate(F functional) : detail::DelegateImpl<void, R>::DelegateImpl(functional) {}
+            template<typename F> Delegate(F functional) : detail::DelegateImpl<void, R>::DelegateImpl(std::forward<F>(functional)) {}
 
             Delegate& operator=(const Delegate& del) {
                 detail::DelegateImpl<void, R>::operator=(del);
@@ -2067,7 +2066,7 @@ public:
 
     Delegate(typename delegate::detail::Delegate<A, R, P...>::FunPtr fn) : delegate::detail::Delegate<A, R, P...>::Delegate(fn) {}
 
-    template<typename F> Delegate(F functional) : delegate::detail::Delegate<A, R, P...>::Delegate(functional) {}
+    template<typename F> Delegate(F functional) : delegate::detail::Delegate<A, R, P...>::Delegate(std::forward<F>(functional)) {}
 
     Delegate& operator=(const Delegate& del) {
         delegate::detail::Delegate<A, R, P...>::operator=(del);
@@ -2089,6 +2088,7 @@ public:
         return *this;
     }
 };
+
 template<typename R, typename... P> class Delegate<R(P...)> : public delegate::detail::Delegate<void, R, P...>
 {
 public:
@@ -2104,7 +2104,7 @@ public:
 
     Delegate(typename delegate::detail::Delegate<void, R, P...>::FunPtr fn) : delegate::detail::Delegate<void, R, P...>::Delegate(fn) {}
 
-    template<typename F> Delegate(F functional) : delegate::detail::Delegate<void, R, P...>::Delegate(functional) {}
+    template<typename F> Delegate(F functional) : delegate::detail::Delegate<void, R, P...>::Delegate(std::forward<F>(functional)) {}
 
     Delegate& operator=(const Delegate& del) {
         delegate::detail::Delegate<void, R, P...>::operator=(del);

@@ -1,11 +1,11 @@
 /*
- * tinflate  -  tiny inflate
+ * uzlib  -  tiny deflate/inflate library (deflate, gzip, zlib)
  *
  * Copyright (c) 2003 by Joergen Ibsen / Jibz
  * All Rights Reserved
  * http://www.ibsensoftware.com/
  *
- * Copyright (c) 2014-2016 by Paul Sokolovsky
+ * Copyright (c) 2014-2018 by Paul Sokolovsky
  *
  * This software is provided 'as-is', without any express
  * or implied warranty.  In no event will the authors be
@@ -33,6 +33,7 @@
  */
 
 #include <assert.h>
+#include <string.h>
 #include "tinf.h"
 
 #define UZLIB_DUMP_ARRAY(heading, arr, size) \
@@ -60,8 +61,6 @@ unsigned short length_base[30];
 /* extra bits and base tables for distance codes */
 unsigned char dist_bits[30];
 unsigned short dist_base[30];
-
-unsigned char clcidx[19];
 
 #else
 
@@ -91,14 +90,14 @@ const unsigned short dist_base[30] = {
    4097, 6145, 8193, 12289, 16385, 24577
 };
 
+#endif
+
 /* special ordering of code length codes */
 const unsigned char clcidx[] = {
    16, 17, 18, 0, 8, 7, 9, 6,
    10, 5, 11, 4, 12, 3, 13, 2,
    14, 1, 15
 };
-
-#endif
 
 /* ----------------------- *
  * -- utility functions -- *
@@ -404,7 +403,7 @@ static int tinf_decode_trees(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
  * -- block inflate functions -- *
  * ----------------------------- */
 
-/* given a stream and two trees, inflate next byte of output */
+/* given a stream and two trees, inflate next chunk of output (a byte or more) */
 static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
 {
     if (d->curlen == 0) {
@@ -480,8 +479,20 @@ static int tinf_inflate_block_data(TINF_DATA *d, TINF_TREE *lt, TINF_TREE *dt)
             d->lzOff = 0;
         }
     } else {
+        #if UZLIB_CONF_USE_MEMCPY
+        /* copy as much as possible, in one memcpy() call */
+        unsigned int to_copy = d->curlen, dest_len = d->dest_limit - d->dest;
+        if (to_copy > dest_len) {
+            to_copy = dest_len;
+        }
+        memcpy(d->dest, d->dest + d->lzOff, to_copy);
+        d->dest += to_copy;
+        d->curlen -= to_copy;
+        return TINF_OK;
+        #else
         d->dest[0] = d->dest[d->lzOff];
         d->dest++;
+        #endif
     }
     d->curlen--;
     return TINF_OK;
@@ -534,27 +545,6 @@ void uzlib_init(void)
    /* fix a special case */
    length_bits[28] = 0;
    length_base[28] = 258;
-
-   /* Set the values in code to allow RODATA-less environment. */
-   clcidx[0] = 16;
-   clcidx[1] = 17;
-   clcidx[2] = 18;
-   clcidx[3] = 0;
-   clcidx[4] = 8;
-   clcidx[5] = 7;
-   clcidx[6] = 9;
-   clcidx[7] = 6;
-   clcidx[8] = 10;
-   clcidx[9] = 5;
-   clcidx[10] = 11;
-   clcidx[11] = 4;
-   clcidx[12] = 12;
-   clcidx[13] = 3;
-   clcidx[14] = 13;
-   clcidx[15] = 2;
-   clcidx[16] = 14;
-   clcidx[17] = 1;
-   clcidx[18] = 15;
 #endif
 }
 
@@ -579,7 +569,9 @@ int uzlib_uncompress(TINF_DATA *d)
 
         /* start a new block */
         if (d->btype == -1) {
+            int old_btype;
 next_blk:
+            old_btype = d->btype;
             /* read final block flag */
             d->bfinal = tinf_getbit(d);
             /* read block type (2 bits) */
@@ -589,7 +581,7 @@ next_blk:
             printf("Started new block: type=%d final=%d\n", d->btype, d->bfinal);
             #endif
 
-            if (d->btype == 1) {
+            if (d->btype == 1 && old_btype != 1) {
                 /* build fixed huffman trees */
                 tinf_build_fixed_trees(&d->ltree, &d->dtree);
             } else if (d->btype == 2) {
