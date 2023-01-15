@@ -22,8 +22,6 @@
 #define BUNDLE_HEADER_OFFSET 2
 #define CRT_HEADER_OFFSET 4
 
-static const char *TAG = "esp-x509-crt-bundle";
-
 /* a dummy certificate so that
  * cacert_ptr passes non-NULL check during handshake */
 static mbedtls_x509_crt s_dummy_crt;
@@ -178,7 +176,7 @@ static esp_err_t esp_crt_bundle_init(const uint8_t *x509_bundle)
     return ESP_OK;
 }
 
-esp_err_t esp_crt_bundle_attach(void *conf)
+esp_err_t arduino_esp_crt_bundle_attach(void *conf)
 {
     esp_err_t ret = ESP_OK;
     // If no bundle has been set by the user then use the bundle embedded in the binary
@@ -201,7 +199,7 @@ esp_err_t esp_crt_bundle_attach(void *conf)
     return ret;
 }
 
-void esp_crt_bundle_detach(mbedtls_ssl_config *conf)
+void arduino_esp_crt_bundle_detach(mbedtls_ssl_config *conf)
 {
     free(s_crt_bundle.crts);
     s_crt_bundle.crts = NULL;
@@ -210,7 +208,7 @@ void esp_crt_bundle_detach(mbedtls_ssl_config *conf)
     }
 }
 
-void esp_crt_bundle_set(const uint8_t *x509_bundle)
+void arduino_esp_crt_bundle_set(const uint8_t *x509_bundle)
 {
     // Free any previously used bundle
     free(s_crt_bundle.crts);

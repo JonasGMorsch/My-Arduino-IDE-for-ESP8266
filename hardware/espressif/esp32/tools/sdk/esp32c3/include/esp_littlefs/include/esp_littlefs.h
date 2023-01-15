@@ -1,38 +1,17 @@
 #ifndef ESP_LITTLEFS_H__
 #define ESP_LITTLEFS_H__
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdarg.h>
-#include <unistd.h>
-#include <utime.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "esp_err.h"
-#include <sys/types.h>
-#include <sys/reent.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <sys/poll.h>
-#include <sys/dirent.h>
-#include <string.h>
-#include "sdkconfig.h"
-
-#include "littlefs/lfs.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**
- * @brief Last Modified Time
- *
- * Use 't' for LITTLEFS_ATTR_MTIME to match example:
- *     https://github.com/ARMmbed/littlefs/issues/23#issuecomment-482293539
- * And to match other external tools such as:
- *     https://github.com/earlephilhower/mklittlefs
- */
-#define LITTLEFS_ATTR_MTIME ((uint8_t) 't')
+#define ESP_LITTLEFS_VERSION_NUMBER "1.5.1"
+#define ESP_LITTLEFS_VERSION_MAJOR 1
+#define ESP_LITTLEFS_VERSION_MINOR 5
+#define ESP_LITTLEFS_VERSION_PATCH 1
 
 /**
  *Configuration structure for esp_vfs_littlefs_register.
@@ -102,14 +81,6 @@ esp_err_t esp_littlefs_format(const char* partition_label);
  *          - ESP_ERR_INVALID_STATE   if not mounted
  */
 esp_err_t esp_littlefs_info(const char* partition_label, size_t *total_bytes, size_t *used_bytes);
-
-#if CONFIG_LITTLEFS_HUMAN_READABLE
-/**
- * @brief converts an enumerated lfs error into a string.
- * @param lfs_errno The enumerated littlefs error.
- */
-const char * esp_littlefs_errno(enum lfs_error lfs_errno);
-#endif
 
 #ifdef __cplusplus
 } // extern "C"

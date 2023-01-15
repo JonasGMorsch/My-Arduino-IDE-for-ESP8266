@@ -1,9 +1,30 @@
+/*
+  LwipIntfDev.h
+
+  Arduino network template class for generic device
+
+  Original Copyright (c) 2020 esp8266 Arduino All rights reserved.
+  This file is part of the esp8266 Arduino core environment.
+
+  This library is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
+  version 2.1 of the License, or (at your option) any later version.
+
+  This library is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
+  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+*/
 
 #ifndef _LWIPINTFDEV_H
 #define _LWIPINTFDEV_H
 
 // TODO:
-// remove all Serial.print
 // unchain pbufs
 
 #include <netif/ethernet.h>
@@ -24,6 +45,13 @@
 #ifndef DEFAULT_MTU
 #define DEFAULT_MTU 1500
 #endif
+
+enum EthernetLinkStatus
+{
+    Unknown,
+    LinkON,
+    LinkOFF
+};
 
 template<class RawDev>
 class LwipIntfDev: public LwipIntf, public RawDev
@@ -59,20 +87,40 @@ public:
         return IPAddress(ip4_addr_get_u32(ip_2_ip4(&_netif.gw)));
     }
 
-    void setDefault();
+    // 1. Currently when no default is set, esp8266-Arduino uses the first
+    //    DHCP client interface receiving a valid address and gateway to
+    //    become the new lwIP default interface.
+    // 2. Otherwise - when using static addresses - lwIP for every packets by
+    //    defaults selects automatically the best suited output interface
+    //    matching the destination address.  If several interfaces match,
+    //    the first one is picked.  On esp8266/Arduno: WiFi interfaces are
+    //    checked first.
+    // 3. Or, use `::setDefault(true)` to force using this interface's gateway
+    //    as default router.
+    void setDefault(bool deflt = true);
 
     // true if interface has a valid IPv4 address
+    // (and ethernet link status is not detectable or is up)
     bool connected()
     {
-        return !!ip4_addr_get_u32(ip_2_ip4(&_netif.ip_addr));
+        return !!ip4_addr_get_u32(ip_2_ip4(&_netif.ip_addr))
+               && (!RawDev::isLinkDetectable() || RawDev::isLinked());
+    }
+
+    bool routable()
+    {
+        return !ip_addr_isany(&_netif.gw);
     }
 
     // ESP8266WiFi API compatibility
-
     wl_status_t status();
+
+    // Arduino Ethernet compatibility
+    EthernetLinkStatus linkStatus();
 
 protected:
     err_t netif_init();
+    void  check_route();
     void  netif_status_callback();
 
     static err_t netif_init_s(netif* netif);
@@ -184,10 +232,10 @@ boolean LwipIntfDev<RawDev>::begin(const uint8_t* macAddress, const uint16_t mtu
         return false;
     }
 
-    _netif.flags |= NETIF_FLAG_UP;
-
     if (localIP().v4() == 0)
     {
+        // IP not set, starting DHCP
+        _netif.flags |= NETIF_FLAG_UP;
         switch (dhcp_start(&_netif))
         {
         case ERR_OK:
@@ -200,6 +248,12 @@ boolean LwipIntfDev<RawDev>::begin(const uint8_t* macAddress, const uint16_t mtu
             netif_remove(&_netif);
             return false;
         }
+    }
+    else
+    {
+        // IP is set, static config
+        netif_set_link_up(&_netif);
+        netif_set_up(&_netif);
     }
 
     _started = true;
@@ -238,6 +292,12 @@ template<class RawDev>
 wl_status_t LwipIntfDev<RawDev>::status()
 {
     return _started ? (connected() ? WL_CONNECTED : WL_DISCONNECTED) : WL_NO_SHIELD;
+}
+
+template<class RawDev>
+EthernetLinkStatus LwipIntfDev<RawDev>::linkStatus()
+{
+    return RawDev::isLinkDetectable() ? _started && RawDev::isLinked() ? LinkON : LinkOFF : Unknown;
 }
 
 template<class RawDev>
@@ -301,16 +361,25 @@ err_t LwipIntfDev<RawDev>::netif_init()
 template<class RawDev>
 void LwipIntfDev<RawDev>::netif_status_callback()
 {
+    check_route();
     if (connected())
     {
-        if (_default || (netif_default == nullptr && !ip_addr_isany(&_netif.gw)))
-        {
-            // on user request,
-            // or if there is no current default interface, but a gateway is valid
-            netif_set_default(&_netif);
-        }
         sntp_stop();
         sntp_init();
+    }
+}
+
+template<class RawDev>
+void LwipIntfDev<RawDev>::check_route()
+{
+    if (connected())
+    {
+        if (_default || (netif_default == nullptr && routable()))
+        {
+            // on user request,
+            // or if there is no current default interface, but our gateway is valid
+            netif_set_default(&_netif);
+        }
     }
     else if (netif_default == &_netif)
     {
@@ -386,13 +455,10 @@ err_t LwipIntfDev<RawDev>::handlePackets()
 }
 
 template<class RawDev>
-void LwipIntfDev<RawDev>::setDefault()
+void LwipIntfDev<RawDev>::setDefault(bool deflt)
 {
-    _default = true;
-    if (connected())
-    {
-        netif_set_default(&_netif);
-    }
+    _default = deflt;
+    check_route();
 }
 
 #endif  // _LWIPINTFDEV_H

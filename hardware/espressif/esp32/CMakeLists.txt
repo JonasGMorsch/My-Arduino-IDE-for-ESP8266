@@ -36,6 +36,7 @@ set(CORE_SRCS
   cores/esp32/esp32-hal-matrix.c
   cores/esp32/esp32-hal-misc.c
   cores/esp32/esp32-hal-psram.c
+  cores/esp32/esp32-hal-rgb-led.c
   cores/esp32/esp32-hal-sigmadelta.c
   cores/esp32/esp32-hal-spi.c
   cores/esp32/esp32-hal-time.c
@@ -87,6 +88,8 @@ set(LIBRARY_SRCS
   libraries/HTTPClient/src/HTTPClient.cpp
   libraries/HTTPUpdate/src/HTTPUpdate.cpp
   libraries/LittleFS/src/LittleFS.cpp
+  libraries/Insights/src/Insights.cpp
+  libraries/I2S/src/I2S.cpp
   libraries/NetBIOS/src/NetBIOS.cpp
   libraries/Preferences/src/Preferences.cpp
   libraries/RainMaker/src/RMaker.cpp
@@ -94,6 +97,8 @@ set(LIBRARY_SRCS
   libraries/RainMaker/src/RMakerParam.cpp
   libraries/RainMaker/src/RMakerDevice.cpp
   libraries/RainMaker/src/RMakerType.cpp
+  libraries/RainMaker/src/RMakerQR.cpp
+  libraries/RainMaker/src/RMakerUtils.cpp
   libraries/SD_MMC/src/SD_MMC.cpp
   libraries/SD/src/SD.cpp
   libraries/SD/src/sd_diskio.cpp
@@ -163,9 +168,8 @@ set(BLE_SRCS
   libraries/BLE/src/GeneralUtils.cpp
   )
 
-
 set(includedirs
-  variants/${IDF_TARGET}/
+  variants/${CONFIG_ARDUINO_VARIANT}/
   cores/esp32/
   libraries/ArduinoOTA/src
   libraries/AsyncUDP/src
@@ -181,6 +185,8 @@ set(includedirs
   libraries/HTTPClient/src
   libraries/HTTPUpdate/src
   libraries/LittleFS/src
+  libraries/Insights/src
+  libraries/I2S/src
   libraries/NetBIOS/src
   libraries/Preferences/src
   libraries/RainMaker/src
@@ -201,18 +207,25 @@ set(includedirs
 
 set(srcs ${CORE_SRCS} ${LIBRARY_SRCS} ${BLE_SRCS})
 set(priv_includes cores/esp32/libb64)
-set(requires spi_flash mbedtls mdns esp_adc_cal wifi_provisioning nghttp)
+set(requires spi_flash mbedtls mdns esp_adc_cal wifi_provisioning nghttp wpa_supplicant)
 set(priv_requires fatfs nvs_flash app_update spiffs bootloader_support openssl bt esp_ipc esp_hid)
 
 idf_component_register(INCLUDE_DIRS ${includedirs} PRIV_INCLUDE_DIRS ${priv_includes} SRCS ${srcs} REQUIRES ${requires} PRIV_REQUIRES ${priv_requires})
 
-string(TOUPPER ${CONFIG_IDF_TARGET} idf_target_caps)
+if(NOT CONFIG_FREERTOS_HZ EQUAL 1000 AND NOT "$ENV{ARDUINO_SKIP_TICK_CHECK}")
+    # See delay() in cores/esp32/esp32-hal-misc.c.
+    message(FATAL_ERROR "esp32-arduino requires CONFIG_FREERTOS_HZ=1000 "
+                        "(currently ${CONFIG_FREERTOS_HZ})")
+endif()
+
+string(TOUPPER ${CONFIG_ARDUINO_VARIANT} idf_target_caps)
+string(REPLACE "-" "_" idf_target_for_macro "${idf_target_caps}")
 target_compile_options(${COMPONENT_TARGET} PUBLIC
     -DARDUINO=10812
-    -DARDUINO_${idf_target_caps}_DEV
+    -DARDUINO_${idf_target_for_macro}_DEV
     -DARDUINO_ARCH_ESP32
     -DARDUINO_BOARD="${idf_target_caps}_DEV"
-    -DARDUINO_VARIANT="${CONFIG_IDF_TARGET}"
+    -DARDUINO_VARIANT="${CONFIG_ARDUINO_VARIANT}"
     -DESP32)
 
 if(CONFIG_AUTOSTART_ARDUINO)
@@ -236,7 +249,9 @@ function(maybe_add_component component_name)
     endif()
 endfunction()
 
-if(IDF_TARGET MATCHES "esp32" AND CONFIG_ESP_RMAKER_TASK_STACK)
+maybe_add_component(esp-dsp)
+
+if(CONFIG_ESP_RMAKER_WORK_QUEUE_TASK_STACK)
     maybe_add_component(esp_rainmaker)
     maybe_add_component(qrcode)
 endif()

@@ -119,11 +119,6 @@ static void __touchInit()
     if (err != ESP_OK) {
         goto err;
     }
-    // Initial no Threshold and setup
-    for (int i = 0; i < SOC_TOUCH_SENSOR_NUM; i++) {
-        __touchInterruptHandlers[i].fn =  NULL;
-        touch_pad_config(i, SOC_TOUCH_PAD_THRESHOLD_MAX);  // returns ESP_OK
-    }
     // keep ISR activated - it can run all together (ISR + touchRead())
     err = touch_pad_isr_register(__touchISR, NULL);
     if (err != ESP_OK) {
@@ -148,18 +143,7 @@ static void __touchInit()
     // Touch Sensor Timer initiated
     touch_pad_set_fsm_mode(TOUCH_FSM_MODE_TIMER);  // returns ESP_OK
     touch_pad_fsm_start();                         // returns ESP_OK
-
-    // Initial no Threshold and setup - TOUCH0 is internal denoise channel
-    for (int i = 1; i < SOC_TOUCH_SENSOR_NUM; i++) {
-        __touchInterruptHandlers[i].fn =  NULL;
-        touch_pad_config(i);                       // returns ESP_OK
-    }
-    // keep ISR activated - it can run all together (ISR + touchRead())
-    err = touch_pad_isr_register(__touchISR, NULL, TOUCH_PAD_INTR_MASK_ACTIVE | TOUCH_PAD_INTR_MASK_INACTIVE);
-     if (err != ESP_OK) {
-        goto err;
-    }
-    touch_pad_intr_enable(TOUCH_PAD_INTR_MASK_ACTIVE | TOUCH_PAD_INTR_MASK_INACTIVE); // returns ESP_OK
+    //ISR setup moved to __touchChannelInit
 #endif
 
     initialized = true;
@@ -170,13 +154,44 @@ err:
     return;
 }
 
+static void __touchChannelInit(int pad)
+{
+   static bool channels_initialized[SOC_TOUCH_SENSOR_NUM] = { false };
+       if(channels_initialized[pad]){
+        return;
+    }
+
+#if SOC_TOUCH_VERSION_1                         // ESP32
+    // Initial no Threshold and setup
+    __touchInterruptHandlers[pad].fn =  NULL;
+    touch_pad_config(pad, SOC_TOUCH_PAD_THRESHOLD_MAX);  // returns ESP_OK
+#elif SOC_TOUCH_VERSION_2                       // ESP32S2, ESP32S3
+    // Initial no Threshold and setup
+    __touchInterruptHandlers[pad].fn =  NULL;
+    touch_pad_config(pad);                       // returns ESP_OK
+    // keep ISR activated - it can run all together (ISR + touchRead())
+    esp_err_t err = touch_pad_isr_register(__touchISR, NULL, TOUCH_PAD_INTR_MASK_ACTIVE | TOUCH_PAD_INTR_MASK_INACTIVE);
+    if (err != ESP_OK) {
+        log_e(" Touch sensor initialization error.");
+        return;
+    }
+    touch_pad_intr_enable(TOUCH_PAD_INTR_MASK_ACTIVE | TOUCH_PAD_INTR_MASK_INACTIVE); // returns ESP_OK
+#endif
+
+    channels_initialized[pad] = true;
+    delay(20);  //delay needed before reading from touch channel after config
+}
+
 static touch_value_t __touchRead(uint8_t pin)
 {
     int8_t pad = digitalPinToTouchChannel(pin);
     if(pad < 0){
+        log_e(" No touch pad on selected pin!");
         return 0;
     }
+
     __touchInit();
+    __touchChannelInit(pad);
 
     touch_value_t touch_value;
     touch_pad_read_raw_data(pad, &touch_value);
@@ -188,6 +203,7 @@ static void __touchConfigInterrupt(uint8_t pin, void (*userFunc)(void), void *Ar
 {
     int8_t pad = digitalPinToTouchChannel(pin);
     if(pad < 0){
+        log_e(" No touch pad on selected pin!");
         return;
     }
 
@@ -198,16 +214,13 @@ static void __touchConfigInterrupt(uint8_t pin, void (*userFunc)(void), void *Ar
     } else {
         // attach ISR User Call
         __touchInit();
+        __touchChannelInit(pad);
         __touchInterruptHandlers[pad].fn = userFunc;
         __touchInterruptHandlers[pad].callWithArgs = callWithArgs;
         __touchInterruptHandlers[pad].arg = Args;
     }
 
-#if SOC_TOUCH_VERSION_1                         // ESP32
-    touch_pad_config(pad, threshold);
-#elif SOC_TOUCH_VERSION_2                       // ESP32S2, ESP32S3
     touch_pad_set_thresh(pad, threshold);
-#endif
 }
 
 // it keeps backwards compatibility
@@ -252,6 +265,27 @@ bool touchInterruptGetLastStatus(uint8_t pin) {
     return __touchInterruptHandlers[pad].lastStatusIsPressed;
 }
 #endif
+
+void touchSleepWakeUpEnable(uint8_t pin, touch_value_t threshold)
+{
+    int8_t pad = digitalPinToTouchChannel(pin);
+    if(pad < 0){
+        log_e(" No touch pad on selected pin!");
+        return;
+    }
+    __touchInit();
+    __touchChannelInit(pad);
+
+    #if SOC_TOUCH_VERSION_1        // Only for ESP32 SoC
+    touch_pad_set_thresh(pad, threshold);
+   
+    #elif SOC_TOUCH_VERSION_2
+    touch_pad_sleep_channel_enable(pad, true);
+    touch_pad_sleep_set_threshold(pad, threshold);
+
+    #endif 
+    esp_sleep_enable_touchpad_wakeup();
+}
 
 extern touch_value_t touchRead(uint8_t) __attribute__ ((weak, alias("__touchRead")));
 extern void touchAttachInterrupt(uint8_t, voidFuncPtr, touch_value_t) __attribute__ ((weak, alias("__touchAttachInterrupt")));

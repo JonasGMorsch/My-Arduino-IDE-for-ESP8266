@@ -9,10 +9,15 @@ const char *service_name = "PROV_1234";
 const char *pop = "abcd1234";
 
 //GPIO for push button
-static int gpio_0 = 0;
+#if CONFIG_IDF_TARGET_ESP32C3
+static int gpio_0 = 9;
+static int gpio_dimmer = 7;
+#else
 //GPIO for virtual device
+static int gpio_0 = 0;
 static int gpio_dimmer = 16;
-/* Variable for reading pin status*/
+#endif
+
 bool dimmer_state = true;
 
 // The framework provides some standard device types like switch, lightbulb, fan, temperature sensor.
@@ -21,16 +26,23 @@ static Device my_device("Dimmer", "custom.device.dimmer", &gpio_dimmer);
 
 void sysProvEvent(arduino_event_t *sys_event)
 {
-    switch (sys_event->event_id) {      
+    switch (sys_event->event_id) {
         case ARDUINO_EVENT_PROV_START:
-#if CONFIG_IDF_TARGET_ESP32
-        Serial.printf("\nProvisioning Started with name \"%s\" and PoP \"%s\" on BLE\n", service_name, pop);
-        printQR(service_name, pop, "ble");
+#if CONFIG_IDF_TARGET_ESP32S2
+            Serial.printf("\nProvisioning Started with name \"%s\" and PoP \"%s\" on SoftAP\n", service_name, pop);
+            printQR(service_name, pop, "softap");
 #else
-        Serial.printf("\nProvisioning Started with name \"%s\" and PoP \"%s\" on SoftAP\n", service_name, pop);
-        printQR(service_name, pop, "softap");
-#endif        
-        break;
+            Serial.printf("\nProvisioning Started with name \"%s\" and PoP \"%s\" on BLE\n", service_name, pop);
+            printQR(service_name, pop, "ble");
+#endif
+            break;
+        case ARDUINO_EVENT_PROV_INIT:
+            wifi_prov_mgr_disable_auto_stop(10000);
+            break;
+        case ARDUINO_EVENT_PROV_CRED_SUCCESS:
+            wifi_prov_mgr_stop_provisioning();
+            break;
+        default:;
     }
 }
 
@@ -57,7 +69,7 @@ void setup()
     pinMode(gpio_dimmer, OUTPUT);
     digitalWrite(gpio_dimmer, DEFAULT_POWER_MODE);
 
-    Node my_node;    
+    Node my_node;
     my_node = RMaker.initNode("ESP RainMaker Node");
 
     //Create custom dimmer device
@@ -72,13 +84,13 @@ void setup()
     my_device.addParam(level_param);
 
     my_device.addCb(write_callback);
-    
-    //Add custom dimmer device to the node   
+
+    //Add custom dimmer device to the node
     my_node.addDevice(my_device);
 
-    //This is optional 
-    RMaker.enableOTA(OTA_USING_PARAMS);
-    //If you want to enable scheduling, set time zone for your region using setTimeZone(). 
+    //This is optional
+    RMaker.enableOTA(OTA_USING_TOPICS);
+    //If you want to enable scheduling, set time zone for your region using setTimeZone().
     //The list of available values are provided here https://rainmaker.espressif.com/docs/time-service.html
     // RMaker.setTimeZone("Asia/Shanghai");
     // Alternatively, enable the Timezone service and let the phone apps set the appropriate timezone
@@ -86,13 +98,15 @@ void setup()
 
     RMaker.enableSchedule();
 
+    RMaker.enableScenes();
+
     RMaker.start();
 
     WiFi.onEvent(sysProvEvent);
-#if CONFIG_IDF_TARGET_ESP32
-    WiFiProv.beginProvision(WIFI_PROV_SCHEME_BLE, WIFI_PROV_SCHEME_HANDLER_FREE_BTDM, WIFI_PROV_SECURITY_1, pop, service_name);
-#else
+#if CONFIG_IDF_TARGET_ESP32S2
     WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, pop, service_name);
+#else
+    WiFiProv.beginProvision(WIFI_PROV_SCHEME_BLE, WIFI_PROV_SCHEME_HANDLER_FREE_BTDM, WIFI_PROV_SECURITY_1, pop, service_name);
 #endif
 }
 

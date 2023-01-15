@@ -42,6 +42,7 @@ protected:
     std::shared_ptr<WiFiClientSocketHandle> clientSocketHandle;
     std::shared_ptr<WiFiClientRxBuffer> _rxBuffer;
     bool _connected;
+    int _timeout;
 
 public:
     WiFiClient *next;
@@ -83,9 +84,10 @@ public:
         return !this->operator==(rhs);
     };
 
-    int fd() const;
+    virtual int fd() const;
 
     int setSocketOption(int option, char* value, size_t len);
+    int setSocketOption(int level, int option, const void* value, size_t len);
     int setOption(int option, int *value);
     int getOption(int option, int *value);
     int setTimeout(uint32_t seconds);

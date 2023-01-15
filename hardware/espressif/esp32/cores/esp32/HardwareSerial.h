@@ -57,6 +57,7 @@
 #include "freertos/semphr.h"
 
 typedef enum {
+    UART_NO_ERROR,
     UART_BREAK_ERROR,
     UART_BUFFER_FULL_ERROR,
     UART_FIFO_OVF_ERROR,
@@ -73,10 +74,37 @@ public:
     HardwareSerial(int uart_nr);
     ~HardwareSerial();
 
-    // onReceive will setup a callback for whenever UART data is received
-    // it will work as UART Rx interrupt -- Using C++ 11 std::fuction 
-    void onReceive(OnReceiveCb function);
+    // setRxTimeout sets the timeout after which onReceive callback will be called (after receiving data, it waits for this time of UART rx inactivity to call the callback fnc)
+    // param symbols_timeout defines a timeout threshold in uart symbol periods. Setting 0 symbol timeout disables the callback call by timeout.
+    //                       Maximum timeout setting is calculacted automatically by IDF. If set above the maximum, it is ignored and an error is printed on Serial0 (check console).
+    //                       Examples: Maximum for 11 bits symbol is 92 (SERIAL_8N2, SERIAL_8E1, SERIAL_8O1, etc), Maximum for 10 bits symbol is 101 (SERIAL_8N1).
+    //                       For example symbols_timeout=1 defines a timeout equal to transmission time of one symbol (~11 bit) on current baudrate. 
+    //                       For a baudrate of 9600, SERIAL_8N1 (10 bit symbol) and symbols_timeout = 3, the timeout would be 3 / (9600 / 10) = 3.125 ms
+    void setRxTimeout(uint8_t symbols_timeout);
+
+    // setRxFIFOFull(uint8_t fifoBytes) will set the number of bytes that will trigger UART_INTR_RXFIFO_FULL interrupt and fill up RxRingBuffer
+    // This affects some functions such as Serial::available() and Serial.read() because, in a UART flow of receiving data, Serial internal 
+    // RxRingBuffer will be filled only after these number of bytes arrive or a RX Timeout happens.
+    // This parameter can be set to 1 in order to receive byte by byte, but it will also consume more CPU time as the ISR will be activates often.
+    void setRxFIFOFull(uint8_t fifoBytes);
+
+    // onReceive will setup a callback that will be called whenever an UART interruption occurs (UART_INTR_RXFIFO_FULL or UART_INTR_RXFIFO_TOUT)
+    // UART_INTR_RXFIFO_FULL interrupt triggers at UART_FULL_THRESH_DEFAULT bytes received (defined as 120 bytes by default in IDF)
+    // UART_INTR_RXFIFO_TOUT interrupt triggers at UART_TOUT_THRESH_DEFAULT symbols passed without any reception (defined as 10 symbos by default in IDF)
+    // onlyOnTimeout parameter will define how onReceive will behave:
+    // Default: true -- The callback will only be called when RX Timeout happens. 
+    //                  Whole stream of bytes will be ready for being read on the callback function at once.
+    //                  This option may lead to Rx Overflow depending on the Rx Buffer Size and number of bytes received in the streaming
+    //         false -- The callback will be called when FIFO reaches 120 bytes and also on RX Timeout.
+    //                  The stream of incommig bytes will be "split" into blocks of 120 bytes on each callback.
+    //                  This option avoid any sort of Rx Overflow, but leaves the UART packet reassembling work to the Application.
+    void onReceive(OnReceiveCb function, bool onlyOnTimeout = false);
+
+    // onReceive will be called on error events (see hardwareSerial_error_t)
     void onReceiveError(OnReceiveErrorCb function);
+
+    // eventQueueReset clears all events in the queue (the events that trigger onReceive and onReceiveError) - maybe usefull in some use cases
+    void eventQueueReset();
  
     void begin(unsigned long baud, uint32_t config=SERIAL_8N1, int8_t rxPin=-1, int8_t txPin=-1, bool invert=false, unsigned long timeout_ms = 20000UL, uint8_t rxfifo_full_thrhd = 112);
     void end(bool fullyTerminate = true);
@@ -90,6 +118,12 @@ public:
     {
         return read((uint8_t*) buffer, size);
     }
+    // Overrides Stream::readBytes() to be faster using IDF
+    size_t readBytes(uint8_t *buffer, size_t length);
+    size_t readBytes(char *buffer, size_t length)
+    {
+        return readBytes((uint8_t *) buffer, length);
+    }    
     void flush(void);
     void flush( bool txOnly);
     size_t write(uint8_t);
@@ -132,21 +166,27 @@ public:
     void setHwFlowCtrlMode(uint8_t mode = HW_FLOWCTRL_CTS_RTS, uint8_t threshold = 64);   // 64 is half FIFO Length
 
     size_t setRxBufferSize(size_t new_size);
+    size_t setTxBufferSize(size_t new_size);
 
 protected:
     int _uart_nr;
     uart_t* _uart;
     size_t _rxBufferSize;
+    size_t _txBufferSize;
     OnReceiveCb _onReceiveCB;
     OnReceiveErrorCb _onReceiveErrorCB;
+    // _onReceive and _rxTimeout have be consistent when timeout is disabled
+    bool _onReceiveTimeout;
+    uint8_t _rxTimeout, _rxFIFOFull;
     TaskHandle_t _eventTask;
+#if !CONFIG_DISABLE_HAL_LOCKS
+    SemaphoreHandle_t _lock;
+#endif
+    int8_t _rxPin, _txPin, _ctsPin, _rtsPin;
 
     void _createEventTask(void *args);
     void _destroyEventTask(void);
     static void _uartEventTask(void *args);
-#if !CONFIG_DISABLE_HAL_LOCKS
-    SemaphoreHandle_t _lock;
-#endif
 };
 
 extern void serialEventRun(void) __attribute__((weak));
@@ -156,10 +196,10 @@ extern void serialEventRun(void) __attribute__((weak));
 #define ARDUINO_USB_CDC_ON_BOOT 0
 #endif
 #if ARDUINO_USB_CDC_ON_BOOT //Serial used for USB CDC
+#if !ARDUINO_USB_MODE
 #include "USB.h"
 #include "USBCDC.h"
-extern HardwareSerial Serial0;
-#elif ARDUINO_HW_CDC_ON_BOOT
+#endif
 extern HardwareSerial Serial0;
 #else
 extern HardwareSerial Serial;

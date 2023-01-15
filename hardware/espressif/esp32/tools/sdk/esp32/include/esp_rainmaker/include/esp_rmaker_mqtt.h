@@ -14,35 +14,15 @@
 #pragma once
 #include <stdint.h>
 #include <esp_err.h>
+#include <esp_rmaker_mqtt_glue.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-/** ESP RainMaker MQTT Configuration */
-typedef struct {
-    /** MQTT Host */
-    char *mqtt_host;
-    /** Client ID */
-    char *client_id;
-    /** Client Certificate in NULL terminate PEM format */
-    char *client_cert;
-    /** Client Key in NULL terminate PEM format */
-    char *client_key;
-    /** Server Certificate in NULL terminate PEM format */
-    char *server_cert;
-} esp_rmaker_mqtt_config_t;
+esp_rmaker_mqtt_conn_params_t *esp_rmaker_mqtt_get_conn_params(void);
 
-/** ESP RainMaker MQTT Subscribe callback prototype
- *
- * @param[in] topic Topic on which the message was received
- * @param[in] payload Data received in the message
- * @param[in] payload_len Length of the data
- * @param[in] priv_data The private data passed during subscription
- */
-typedef void (*esp_rmaker_mqtt_subscribe_cb_t) (const char *topic, void *payload, size_t payload_len, void *priv_data);
-   
 /** Initialize ESP RainMaker MQTT
  *
  * @param[in] config The MQTT configuration data
@@ -50,7 +30,13 @@ typedef void (*esp_rmaker_mqtt_subscribe_cb_t) (const char *topic, void *payload
  * @return ESP_OK on success.
  * @return error in case of any error.
  */
-esp_err_t esp_rmaker_mqtt_init(esp_rmaker_mqtt_config_t *config);
+esp_err_t esp_rmaker_mqtt_init(esp_rmaker_mqtt_conn_params_t *conn_params);
+
+/* Deinitialize ESP RainMaker MQTT
+ *
+ * Call this function after MQTT has disconnected.
+ */
+void esp_rmaker_mqtt_deinit(void);
 
 /** MQTT Connect
  *
@@ -77,22 +63,24 @@ esp_err_t esp_rmaker_mqtt_disconnect(void);
  * @param[in] topic The MQTT topic on which the message should be published.
  * @param[in] data Data to be published
  * @param[in] data_len Length of the data
+ * @param[in] qos Quality of Service for the Publish. Can be 0, 1 or 2. Also depends on what the MQTT broker supports.
  *
  * @return ESP_OK on success.
  * @return error in case of any error.
  */
-esp_err_t esp_rmaker_mqtt_publish(const char *topic, void *data, size_t data_len);
+esp_err_t esp_rmaker_mqtt_publish(const char *topic, void *data, size_t data_len, uint8_t qos, int *msg_id);
 
 /** Subscribe to MQTT topic
  *
  * @param[in] topic The topic to be subscribed to.
  * @param[in] cb The callback to be invoked when a message is received on the given topic.
  * @param[in] priv_data Optional private data to be passed to the callback
+ * @param[in] qos Quality of Service for the Subscription. Can be 0, 1 or 2. Also depends on what the MQTT broker supports.
  *
  * @return ESP_OK on success.
  * @return error in case of any error.
  */
-esp_err_t esp_rmaker_mqtt_subscribe(const char *topic, esp_rmaker_mqtt_subscribe_cb_t cb, void *priv_data);
+esp_err_t esp_rmaker_mqtt_subscribe(const char *topic, esp_rmaker_mqtt_subscribe_cb_t cb, uint8_t qos, void *priv_data);
 
 /** Unsubscribe from MQTT topic
  *
@@ -102,6 +90,15 @@ esp_err_t esp_rmaker_mqtt_subscribe(const char *topic, esp_rmaker_mqtt_subscribe
  * @return error in case of any error.
  */
 esp_err_t esp_rmaker_mqtt_unsubscribe(const char *topic);
+esp_err_t esp_rmaker_mqtt_setup(esp_rmaker_mqtt_config_t mqtt_config);
+
+/** Creates appropriate MQTT Topic String based on CONFIG_ESP_RMAKER_MQTT_USE_BASIC_INGEST_TOPICS
+ * @param[out] buf Buffer to hold topic string
+ * @param[in] buf_size Size of buffer
+ * @param[in] topic_suffix MQTT Topic suffix
+ * @param[in] rule Basic Ingests Rule Name
+*/
+void esp_rmaker_create_mqtt_topic(char *buf, size_t buf_size, const char *topic_suffix, const char *rule);
 
 #ifdef __cplusplus
 }

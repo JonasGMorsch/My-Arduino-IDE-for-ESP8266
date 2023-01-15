@@ -65,7 +65,7 @@ else
 fi
 
 # Directory in which to put host dependent programs and libraries
-exec_prefix=${prefix}
+exec_prefix=/builds/idf/crosstool-NG/builds/xtensa-esp32s2-elf
 # Directory in which to put the directories used by the compiler.
 libdir=${exec_prefix}/lib
 libexecdir=${exec_prefix}/libexec

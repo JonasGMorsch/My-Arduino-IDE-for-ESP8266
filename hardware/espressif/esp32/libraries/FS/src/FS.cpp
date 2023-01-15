@@ -130,6 +130,15 @@ size_t File::size() const
     return _p->size();
 }
 
+bool File::setBufferSize(size_t size)
+{
+    if (!*this) {
+        return 0;
+    }
+
+    return _p->setBufferSize(size);
+}
+
 void File::close()
 {
     if (_p) {
@@ -176,6 +185,22 @@ File File::openNextFile(const char* mode)
         return File();
     }
     return _p->openNextFile(mode);
+}
+
+boolean File::seekDir(long position){
+    if(!_p){
+        return false;
+    }
+    return _p->seekDir(position);
+}
+
+String File::getNextFileName(void)
+{
+    if (!_p) {
+        return ""; 
+    }
+    return _p->getNextFileName();
+
 }
 
 void File::rewindDirectory(void)

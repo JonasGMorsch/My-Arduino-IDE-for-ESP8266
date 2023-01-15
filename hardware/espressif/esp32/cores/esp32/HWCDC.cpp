@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "USB.h"
-#if CONFIG_IDF_TARGET_ESP32C3
+#if CONFIG_IDF_TARGET_ESP32C3 || CONFIG_IDF_TARGET_ESP32S3
 
 #include "esp32-hal.h"
 #include "HWCDC.h"
@@ -32,7 +32,11 @@ static uint8_t rx_data_buf[64];
 static intr_handle_t intr_handle = NULL;
 static volatile bool initial_empty = false;
 static xSemaphoreHandle tx_lock = NULL;
-static uint32_t tx_timeout_ms = 200;
+
+// workaround for when USB CDC is not connected
+static uint32_t tx_timeout_ms = 0;
+static bool tx_timeout_change_request = false;
+
 static esp_event_loop_handle_t arduino_hw_cdc_event_loop_handle = NULL;
 
 static esp_err_t arduino_hw_cdc_event_post(esp_event_base_t event_base, int32_t event_id, void *event_data, size_t event_data_size, BaseType_t *task_unblocked){
@@ -72,9 +76,14 @@ static void hw_cdc_isr_handler(void *arg) {
         if (usb_serial_jtag_ll_txfifo_writable() == 1) {
             // We disable the interrupt here so that the interrupt won't be triggered if there is no data to send.
             usb_serial_jtag_ll_disable_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY);
-
             if(!initial_empty){
                 initial_empty = true;
+                // First time USB is plugged and the application has not explicitly set TX Timeout, set it to default 100ms.
+                // Otherwise, USB is still unplugged and the timeout will be kept as Zero in order to avoid any delay in the
+                // application whenever it uses write() and the TX Queue gets full.
+                if (!tx_timeout_change_request) {
+                    tx_timeout_ms = 100;
+                }
                 //send event?
                 //ets_printf("CONNECTED\n");
                 arduino_hw_cdc_event_post(ARDUINO_HW_CDC_EVENTS, ARDUINO_HW_CDC_CONNECTED_EVENT, &event, sizeof(arduino_hw_cdc_event_data_t), &xTaskWoken);
@@ -167,19 +176,21 @@ void HWCDC::begin(unsigned long baud)
     setRxBufferSize(256);//default if not preset
     setTxBufferSize(256);//default if not preset
 
-    usb_serial_jtag_ll_clr_intsts_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY | USB_SERIAL_JTAG_INTR_SERIAL_OUT_RECV_PKT | USB_SERIAL_JTAG_INTR_BUS_RESET);
+    usb_serial_jtag_ll_disable_intr_mask(USB_SERIAL_JTAG_LL_INTR_MASK);
+    usb_serial_jtag_ll_clr_intsts_mask(USB_SERIAL_JTAG_LL_INTR_MASK);
     usb_serial_jtag_ll_ena_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY | USB_SERIAL_JTAG_INTR_SERIAL_OUT_RECV_PKT | USB_SERIAL_JTAG_INTR_BUS_RESET);
     if(!intr_handle && esp_intr_alloc(ETS_USB_SERIAL_JTAG_INTR_SOURCE, 0, hw_cdc_isr_handler, NULL, &intr_handle) != ESP_OK){
         isr_log_e("HW USB CDC failed to init interrupts");
         end();
         return;
     }
+    usb_serial_jtag_ll_txfifo_flush();
 }
 
 void HWCDC::end()
 {
     //Disable tx/rx interrupt.
-    usb_serial_jtag_ll_disable_intr_mask(USB_SERIAL_JTAG_INTR_SERIAL_IN_EMPTY | USB_SERIAL_JTAG_INTR_SERIAL_OUT_RECV_PKT | USB_SERIAL_JTAG_INTR_BUS_RESET);
+    usb_serial_jtag_ll_disable_intr_mask(USB_SERIAL_JTAG_LL_INTR_MASK);
     esp_intr_free(intr_handle);
     intr_handle = NULL;
     if(tx_lock != NULL) {
@@ -195,6 +206,9 @@ void HWCDC::end()
 
 void HWCDC::setTxTimeoutMs(uint32_t timeout){
     tx_timeout_ms = timeout;
+    // it registers that the user has explicitly requested to use a value as TX timeout
+    // used for the workaround with unplugged USB and TX Queue Full that causes a delay on every write()
+    tx_timeout_change_request = true;
 }
 
 /*
@@ -379,10 +393,12 @@ void HWCDC::setDebugOutput(bool en)
     }
 }
 
-#if ARDUINO_HW_CDC_ON_BOOT //Serial used for USB CDC
+#if ARDUINO_USB_MODE
+#if ARDUINO_USB_CDC_ON_BOOT//Serial used for USB CDC
 HWCDC Serial;
 #else
 HWCDC USBSerial;
+#endif
 #endif
 
 #endif /* CONFIG_TINYUSB_CDC_ENABLED */

@@ -24,10 +24,13 @@ extern "C"
 
 #define ESP_RMAKER_CONFIG_VERSION    "2020-03-20"
 
-#define MAX_VERSION_STRING_LEN  16
+/* Maximum length of the alert message that can be passed to esp_rmaker_raise_alert() */
+#define ESP_RMAKER_MAX_ALERT_LEN    100
 
+/** @cond **/
 /** ESP RainMaker Event Base */
 ESP_EVENT_DECLARE_BASE(RMAKER_EVENT);
+/** @endcond **/
 
 /** ESP RainMaker Events */
 typedef enum {
@@ -39,14 +42,15 @@ typedef enum {
     RMAKER_EVENT_CLAIM_SUCCESSFUL,
     /** Self Claiming Failed */
     RMAKER_EVENT_CLAIM_FAILED,
-    /** Node reboot has been triggered. The associated event data is the time in seconds
-     * (type: uint8_t) after which the node will reboot. Note that this time may not be
-     * accurate as the events are received asynchronously.*/
-    RMAKER_EVENT_REBOOT,
-    /** Wi-Fi credentials reset. Triggered after calling esp_rmaker_wifi_reset() */
-    RMAKER_EVENT_WIFI_RESET,
-    /** Node reset to factory defaults. Triggered after calling esp_rmaker_factory_reset() */
-    RMAKER_EVENT_FACTORY_RESET
+    /** Node side communication for User-Node mapping done.
+     * Actual mapping state will be managed by the ESP RainMaker cloud based on the user side communication.
+     * Associated data is the NULL terminated user id.
+     */
+    RMAKER_EVENT_USER_NODE_MAPPING_DONE,
+    /** Local control started. Associated data is the NULL terminated Service Name */
+    RMAKER_EVENT_LOCAL_CTRL_STARTED,
+    /* User reset request successfully sent to ESP RainMaker Cloud */
+    RMAKER_EVENT_USER_NODE_MAPPING_RESET,
 } esp_rmaker_event_t;
 
 /** ESP RainMaker Node information */
@@ -59,6 +63,8 @@ typedef struct {
     char *fw_version;
     /** Model (Optional). If not set, PROJECT_NAME is used as default (recommended)*/
     char *model;
+    /** Subtype (Optional). */
+    char *subtype;
 } esp_rmaker_node_info_t;
 
 /** ESP RainMaker Configuration */
@@ -116,6 +122,18 @@ typedef enum {
     PROP_FLAG_PERSIST = (1 << 3)
 } esp_param_property_flags_t;
 
+/** System Service Reboot Flag */
+#define SYSTEM_SERV_FLAG_REBOOT         (1 << 0)
+
+/** System Service Factory Reset Flag */
+#define SYSTEM_SERV_FLAG_FACTORY_RESET  (1 << 1)
+
+/** System Service Wi-Fi Reset Flag */
+#define SYSTEM_SERV_FLAG_WIFI_RESET     (1 << 2)
+
+/** System Service All Flags */
+#define SYSTEM_SERV_FLAGS_ALL   (SYSTEM_SERV_FLAG_REBOOT | SYSTEM_SERV_FLAG_FACTORY_RESET | SYSTEM_SERV_FLAG_WIFI_RESET)
+
 /** Generic ESP RainMaker handle */
 typedef size_t esp_rmaker_handle_t;
 
@@ -138,6 +156,16 @@ typedef enum {
     ESP_RMAKER_REQ_SRC_CLOUD,
     /** Request received when a schedule has triggered */
     ESP_RMAKER_REQ_SRC_SCHEDULE,
+    /** Request received when a scene has been activated */
+    ESP_RMAKER_REQ_SRC_SCENE_ACTIVATE,
+    /** Request received when a scene has been deactivated */
+    ESP_RMAKER_REQ_SRC_SCENE_DEACTIVATE,
+    /** Request received from a local controller */
+    ESP_RMAKER_REQ_SRC_LOCAL,
+    /** This will always be the last value. Any value equal to or
+     * greater than this should be considered invalid.
+     */
+    ESP_RMAKER_REQ_SRC_MAX,
 } esp_rmaker_req_src_t;
 
 /** Write request Context */
@@ -151,6 +179,32 @@ typedef struct {
     /** Source of request */
     esp_rmaker_req_src_t src;
 } esp_rmaker_read_ctx_t;
+
+/** System service configuration */
+typedef struct {
+    /** Logical OR of system service flags (SYSTEM_SERV_FLAG_REBOOT,
+     * SYSTEM_SERV_FLAG_FACTORY_RESET, SYSTEM_SERV_FLAG_WIFI_RESET) as required
+     * or SYSTEM_SERV_FLAGS_ALL.
+     */
+    uint16_t flags;
+    /** Time in seconds after which the device should reboot.
+     * Value of zero would trigger an immediate reboot if a write is received for
+     * the Reboot parameter.
+     * Recommended value: 2
+     */
+    int8_t reboot_seconds;
+    /** Time in seconds after which the device should reset (Wi-Fi or factory).
+     * Value of zero would trigger an immediate action if a write is received for
+     * the Wi-Fi reset or Factory reset parameter.
+     * Recommended value: 2
+     */
+    int8_t reset_seconds;
+    /** Time in seconds after which the device should reboot after it has been reset.
+     * Value of zero would mean that there won't be any reboot after the reset.
+     * Recommended value: 2
+     */
+    int8_t reset_reboot_seconds;
+} esp_rmaker_system_serv_config_t;
 
 /** Callback for parameter value write requests.
  *
@@ -187,6 +241,28 @@ typedef esp_err_t (*esp_rmaker_device_write_cb_t)(const esp_rmaker_device_t *dev
  */
 typedef esp_err_t (*esp_rmaker_device_read_cb_t)(const esp_rmaker_device_t *device, const esp_rmaker_param_t *param,
         void *priv_data, esp_rmaker_read_ctx_t *ctx);
+
+/** Convert device callback source to string
+ *
+ * Device read/write callback can be via different sources. This is a helper API
+ * to give the source in string format for printing.
+ *
+ * Example Usage:
+ * @code{c}
+ * static esp_err_t write_cb(const esp_rmaker_device_t *device, const esp_rmaker_param_t *param,
+ * const esp_rmaker_param_val_t val, void *priv_data, esp_rmaker_write_ctx_t *ctx)
+{
+    if (ctx) {
+        ESP_LOGI(TAG, "Received write request via : %s", esp_rmaker_device_cb_src_to_str(ctx->src));
+    }
+ * @endcode
+ *
+ * @param[in] src The src field as received in the callback context.
+ *
+ * @return NULL terminated source string on success
+ * @return NULL on failure
+ */
+const char *esp_rmaker_device_cb_src_to_str(esp_rmaker_req_src_t src);
 
 /**
  * Initialise a Boolean value
@@ -311,7 +387,7 @@ esp_err_t esp_rmaker_node_deinit(const esp_rmaker_node_t *node);
 const esp_rmaker_node_t *esp_rmaker_get_node(void);
 
 /** Get Node Id
- * 
+ *
  * Returns pointer to the NULL terminated Node ID string.
  *
  * @return Pointer to a NULL terminated Node ID string.
@@ -356,10 +432,11 @@ esp_err_t esp_rmaker_node_add_attribute(const esp_rmaker_node_t *node, const cha
  */
 esp_err_t esp_rmaker_node_add_fw_version(const esp_rmaker_node_t *node, const char *fw_version);
 
-/** Add model for a node (Not recommended)
+/** Add model for a node
  *
  * Model is set internally to the project name. This API can be used to
- * override that name.
+ * override that name, now that a new field "project" has also been added
+ * internally to the node info.
  *
  * @param node Node handle.
  * @param[in] model New model string.
@@ -368,6 +445,16 @@ esp_err_t esp_rmaker_node_add_fw_version(const esp_rmaker_node_t *node, const ch
  * @return error in case of failure.
  */
 esp_err_t esp_rmaker_node_add_model(const esp_rmaker_node_t *node, const char *model);
+
+/** Add subtype for a node
+ *
+ * @param node Node handle.
+ * @param[in] subtype Subtype string.
+ *
+ * @return ESP_OK on success.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_node_add_subtype(const esp_rmaker_node_t *node, const char *subtype);
 
 /**
  * Create a Device
@@ -458,12 +545,24 @@ esp_err_t esp_rmaker_node_add_device(const esp_rmaker_node_t *node, const esp_rm
  */
 esp_err_t esp_rmaker_node_remove_device(const esp_rmaker_node_t *node, const esp_rmaker_device_t *device);
 
+/** Get device by name
+ *
+ * Get handle for a device based on the name.
+ *
+ * @param[in] node Node handle.
+ * @param[in] device_name Device name to search.
+ *
+ * @return Device handle on success.
+ * @return NULL in case of failure.
+ */
+esp_rmaker_device_t *esp_rmaker_node_get_device_by_name(const esp_rmaker_node_t *node, const char *device_name);
+
 /** Add a Device attribute
  *
  * @note Device attributes are reported only once after a boot-up as part of the node
  * configuration.
  * Eg. Serial Number
- * 
+ *
  * @param[in] device Device handle.
  * @param[in] attr_name Name of the attribute.
  * @param[in] val Value of the attribute.
@@ -472,6 +571,31 @@ esp_err_t esp_rmaker_node_remove_device(const esp_rmaker_node_t *node, const esp
  * @return error in case of failure.
  */
 esp_err_t esp_rmaker_device_add_attribute(const esp_rmaker_device_t *device, const char *attr_name, const char *val);
+
+/** Add a Device subtype
+ *
+ * This can be something like esp.subtype.rgb-light for a device of type esp.device.lightbulb.
+ * This would primarily be used by the phone apps to render different icons for the same device type.
+ *
+ * @param[in] device Device handle.
+ * @param[in] subtype String describing the sub type.
+ *
+ * @return ESP_OK if the subtype was added successfully.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_device_add_subtype(const esp_rmaker_device_t *device, const char *subtype);
+
+/** Add a Device model
+ *
+ * This would primarily be used by the phone apps to render different icons for the same device type.
+ *
+ * @param[in] device Device handle.
+ * @param[in] model String describing the model.
+ *
+ * @return ESP_OK if the model was added successfully.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_device_add_model(const esp_rmaker_device_t *device, const char *model);
 
 /** Get device name from handle
  *
@@ -489,7 +613,7 @@ char *esp_rmaker_device_get_name(const esp_rmaker_device_t *device);
  * @return NULL terminated device type string on success.
  * @return NULL in case of failure, or if the type wasn't provided while creating the device.
  */
-char *esp_rmaker_device_get_name(const esp_rmaker_device_t *device);
+char *esp_rmaker_device_get_type(const esp_rmaker_device_t *device);
 
 /**
  * Add a parameter to a device/service
@@ -638,6 +762,30 @@ esp_err_t esp_rmaker_param_add_valid_str_list(const esp_rmaker_param_t *param, c
  */
 esp_err_t esp_rmaker_param_add_array_max_count(const esp_rmaker_param_t *param, int count);
 
+
+/* Update a parameter
+ *
+ * This will just update the value of a parameter with esp rainmaker core, without actually reporting
+ * it. This can be used when multiple parameters need to be reported together.
+ * Eg. If x parameters are to be reported, this API can be used for the first x -1 parameters
+ * and the last one can be updated using esp_rmaker_param_update_and_report().
+ * This will report all parameters which were updated prior to this call.
+ *
+ * Sample:
+ *
+ * esp_rmaker_param_update(param1, esp_rmaker_float(10.2));
+ * esp_rmaker_param_update(param2, esp_rmaker_int(55));
+ * esp_rmaker_param_update(param3, esp_rmaker_int(95));
+ * esp_rmaker_param_update_and_report(param1, esp_rmaker_bool(true));
+ *
+ * @param[in] param Parameter handle.
+ * @param[in] val New value of the parameter.
+ *
+ * @return ESP_OK if the parameter was updated successfully.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_param_update(const esp_rmaker_param_t *param, esp_rmaker_param_val_t val);
+
 /** Update and report a parameter
  *
  * Calling this API will update the parameter and report it to ESP RainMaker cloud.
@@ -650,6 +798,46 @@ esp_err_t esp_rmaker_param_add_array_max_count(const esp_rmaker_param_t *param, 
  * @return error in case of failure.
  */
 esp_err_t esp_rmaker_param_update_and_report(const esp_rmaker_param_t *param, esp_rmaker_param_val_t val);
+
+/** Update and notify a parameter
+ *
+ * Calling this API will update the parameter and report it to ESP RainMaker cloud similar to
+ * esp_rmaker_param_update_and_report(). However, additionally, it will also trigger a notification
+ * on the phone apps (if enabled).
+ *
+ * @note This should be used only when some local change requires explicit notification even when the
+ * phone app is in background, not otherwise.
+ * Eg. Alarm got triggered, temperature exceeded some threshold, etc.
+ *
+ * Alternatively, the esp_rmaker_raise_alert() API can also be used to trigger notification
+ * on the phone apps with pre-formatted text.
+ *
+ * @param[in] param Parameter handle.
+ * @param[in] val New value of the parameter.
+ *
+ * @return ESP_OK if the parameter was updated successfully.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_param_update_and_notify(const esp_rmaker_param_t *param, esp_rmaker_param_val_t val);
+
+/** Trigger an alert on the phone app
+ *
+ * This API will trigger a notification alert on the phone apps (if enabled) using the formatted text
+ * provided. Note that this does not send a notification directly to the phone, but reports the alert
+ * to the ESP RainMaker cloud which then uses the Notification framework to send notifications to the
+ * phone apps. The value does not get stored anywhere, nor is it linked to any node parameters.
+ *
+ * @note This should be used only if some event requires explicitly alerting the user even when the
+ * phone app is in background, not otherwise.
+ * Eg. "Motion Detected", "Fire alarm triggered"
+ *
+ * @param[in] alert_str NULL terminated pre-formatted alert string.
+ *     Maximum length can be ESP_RMAKER_MAX_ALERT_LEN, excluding NULL character.
+ *
+ * @return ESP_OK on success.
+ * @return error in case of failure.
+ */
+esp_err_t esp_rmaker_raise_alert(const char *alert_str);
 
 /** Get parameter name from handle
  *
@@ -669,11 +857,18 @@ char *esp_rmaker_param_get_name(const esp_rmaker_param_t *param);
  */
 char *esp_rmaker_param_get_type(const esp_rmaker_param_t *param);
 
-/** Prototype for ESP RainMaker Work Queue Function
+/** Get parameter value
  *
- * @param[in] priv_data The private data associated with the work function.
+ * This gives the parameter value that is stored in the RainMaker core.
+ *
+ * @note This does not call any explicit functions to read value from hardware/driver.
+ *
+ * @param[in] param Parameter handle
+ *
+ * @return Pointer to parameter value on success.
+ * @return NULL in case of failure.
  */
-typedef void (*esp_rmaker_work_fn_t)(void *priv_data);
+esp_rmaker_param_val_t *esp_rmaker_param_get_val(esp_rmaker_param_t *param);
 
 /** Report the node details to the cloud
  *
@@ -689,18 +884,67 @@ typedef void (*esp_rmaker_work_fn_t)(void *priv_data);
  */
 esp_err_t esp_rmaker_report_node_details(void);
 
-/** Queue execution of a function in ESP RainMaker's context
+/** Enable Timezone Service
  *
- * This API queues a work function for execution in the ESP RainMaker Task's context.
+ * This enables the ESP RainMaker standard timezone service which can be used to set
+ * timezone, either in POSIX or location string format. Please refer the specifications
+ * for additional details.
  *
- * @param[in] work_fn The Work function to be queued.
- * @param[in] priv_data Private data to be passed to the work function.
- *
- * @return ESP_OK on success.
- * @return error in case of failure.
+ * @return ESP_OK on success
+ * @return error on failure
  */
-esp_err_t esp_rmaker_queue_work(esp_rmaker_work_fn_t work_fn, void *priv_data);
+esp_err_t esp_rmaker_timezone_service_enable(void);
 
+/** Enable System Service
+ *
+ * This enables the ESP RainMaker standard system service which can be
+ * used for operations like reboot, factory reset and Wi-Fi reset.
+ *
+ * Please refer the specifications for additional details.
+ *
+ * @param[in] config Configuration for the system service.
+ *
+ * @return ESP_OK on success
+ * @return error on failure
+ */
+esp_err_t esp_rmaker_system_service_enable(esp_rmaker_system_serv_config_t *config);
+
+/**
+ * Check if local_ctrl service has started
+ *
+ * @return true if service has started
+ * @return false if the service has not started
+ */
+bool esp_rmaker_local_ctrl_service_started(void);
+
+/**
+ * Enable Default RainMaker OTA Firmware Upgrade
+ *
+ * This enables the default recommended RainMaker OTA Firmware Upgrade, which is
+ * "Using the Topics", which allows performing OTA from Dashboard.
+ * This OTA can be triggered by Admin Users only.
+ * On Public RainMaker deployment, for nodes using "Self Claiming", since there
+ * is no associated admin user, the Primary user will automatically become the admin
+ * and can perform OTA from dashboard.
+ *
+ * @return ESP_OK on success
+ * @return error on failure
+ */
+esp_err_t esp_rmaker_ota_enable_default(void);
+
+/*
+ * Send a command to self (TESTING only)
+ *
+ * This is to be passed as an argument to esp_rmaker_cmd_resp_test_send().
+ *
+ * @param[in] cmd The TLV encoded command data.
+ * @param[in] cmd_len Length of the command data.
+ * @param[in] priv_data Private data passed to esp_rmaker_cmd_resp_test_send().
+ *
+ * @return ESP_OK on success
+ * @return error on failure
+ */
+esp_err_t esp_rmaker_test_cmd_resp(const void *cmd, size_t cmd_len, void *priv_data);
 #ifdef __cplusplus
 }
 #endif

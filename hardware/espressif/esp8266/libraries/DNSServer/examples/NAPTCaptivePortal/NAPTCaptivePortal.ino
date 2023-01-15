@@ -74,12 +74,13 @@
 #include <ESP8266WiFi.h>
 #include <lwip/napt.h>
 #include <lwip/dns.h>
-#include <dhcpserver.h>
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
 #include <ESP8266mDNS.h>
 #include <EEPROM.h>
+
+#include "WifiHttp.h"
 
 #define NAPT 1000
 #define NAPT_PORT 10

@@ -70,6 +70,7 @@ public:
     }
     size_t position() const;
     size_t size() const;
+    bool setBufferSize(size_t size);
     void close();
     operator bool() const;
     time_t getLastWrite();
@@ -77,7 +78,9 @@ public:
     const char* name() const;
 
     boolean isDirectory(void);
+    boolean seekDir(long position);
     File openNextFile(const char* mode = FILE_READ);
+    String getNextFileName(void);
     void rewindDirectory(void);
 
 protected:
