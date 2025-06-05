@@ -56,18 +56,23 @@
 #define D8 8
 
 #include <stddef.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <stdlib_noniso.h>
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
-    // TODO: #include <stdlib_noniso.h> ?
-    char* itoa(int val, char* s, int radix);
-    char* ltoa(long val, char* s, int radix);
-
+    char* utoa(unsigned value, char* result, int base);
+    char* itoa(int value, char* result, int base);
+#ifdef STRLCAT_MISSING
     size_t strlcat(char* dst, const char* src, size_t size);
+#endif
+#ifdef STRLCPY_MISSING
     size_t strlcpy(char* dst, const char* src, size_t size);
-
+#endif
 #ifdef __cplusplus
 }
 #endif
@@ -160,13 +165,10 @@ int    mockUDPSocket();
 bool   mockUDPListen(int sock, uint32_t dstaddr, uint16_t port, uint32_t mcast = 0);
 size_t mockUDPFillInBuf(int sock, char* ccinbuf, size_t& ccinbufsize, uint8_t& addrsize,
                         uint8_t addr[16], uint16_t& port);
-size_t mockUDPPeekBytes(int sock, char* dst, size_t usersize, int timeout_ms, char* ccinbuf,
-                        size_t& ccinbufsize);
-size_t mockUDPRead(int sock, char* dst, size_t size, int timeout_ms, char* ccinbuf,
-                   size_t& ccinbufsize);
+size_t mockUDPPeekBytes(int sock, char* dst, size_t offset, size_t usersize, int timeout_ms,
+                        char* ccinbuf, size_t& ccinbufsize);
 size_t mockUDPWrite(int sock, const uint8_t* data, size_t size, int timeout_ms, uint32_t ipv4,
                     uint16_t port);
-void   mockUDPSwallow(size_t copied, char* ccinbuf, size_t& ccinbufsize);
 
 class UdpContext;
 void register_udp(int sock, UdpContext* udp = nullptr);

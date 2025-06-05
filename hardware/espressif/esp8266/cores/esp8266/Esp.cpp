@@ -31,6 +31,7 @@
 #include "umm_malloc/umm_malloc.h"
 #include <pgmspace.h>
 #include "reboot_uart_dwnld.h"
+#include "hardware_reset.h"
 
 extern "C" {
 #include "user_interface.h"
@@ -253,7 +254,7 @@ String EspClass::getCoreVersion()
         return String(core_release);
     }
     char buf[12];
-    snprintf(buf, sizeof(buf), "%08x", core_version);
+    snprintf(buf, sizeof(buf), PSTR("%08x"), core_version);
     return String(buf);
 }
 
@@ -519,7 +520,7 @@ struct rst_info * EspClass::getResetInfoPtr(void) {
 }
 
 bool EspClass::eraseConfig(void) {
-    const size_t cfgSize = 0x4000;
+    const size_t cfgSize = 0x4000;  // Sectors: RF_CAL + SYSTEMPARAM[3]
     size_t cfgAddr = ESP.getFlashChipSize() - cfgSize;
 
     for (size_t offset = 0; offset < cfgSize; offset += SPI_FLASH_SEC_SIZE) {
@@ -529,6 +530,17 @@ bool EspClass::eraseConfig(void) {
     }
 
     return true;
+}
+
+bool EspClass::eraseConfigAndReset(void) {
+    // Before calling, ensure the WiFi state is equivalent to
+    // "WiFi.mode(WIFI_OFF)." This will reduce the likelihood of the SDK
+    // performing WiFi data writes to Flash between erasing and resetting.
+    bool reset = eraseConfig();
+    if (reset) {
+        hardware_reset();
+    }
+    return reset;
 }
 
 uint8_t *EspClass::random(uint8_t *resultArray, const size_t outputSizeBytes)

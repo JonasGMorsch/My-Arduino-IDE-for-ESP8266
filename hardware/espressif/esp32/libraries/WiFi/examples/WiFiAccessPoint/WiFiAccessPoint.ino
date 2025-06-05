@@ -12,17 +12,18 @@
 */
 
 #include <WiFi.h>
-#include <WiFiClient.h>
+#include <NetworkClient.h>
 #include <WiFiAP.h>
 
-#define LED_BUILTIN 2   // Set the GPIO pin where you connected your test LED or comment this line out if your dev board has a built-in LED
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2  // Set the GPIO pin where you connected your test LED or comment this line out if your dev board has a built-in LED
+#endif
 
 // Set these to your desired credentials.
 const char *ssid = "yourAP";
 const char *password = "yourPassword";
 
-WiFiServer server(80);
-
+NetworkServer server(80);
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -32,7 +33,11 @@ void setup() {
   Serial.println("Configuring access point...");
 
   // You can remove the password parameter if you want the AP to be open.
-  WiFi.softAP(ssid, password);
+  // a valid password must have more than 7 characters
+  if (!WiFi.softAP(ssid, password)) {
+    log_e("Soft AP creation failed.");
+    while (1);
+  }
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
@@ -42,16 +47,16 @@ void setup() {
 }
 
 void loop() {
-  WiFiClient client = server.available();   // listen for incoming clients
+  NetworkClient client = server.accept();  // listen for incoming clients
 
-  if (client) {                             // if you get a client,
-    Serial.println("New Client.");           // print a message out the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected()) {            // loop while the client's connected
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        if (c == '\n') {                    // if the byte is a newline character
+  if (client) {                     // if you get a client,
+    Serial.println("New Client.");  // print a message out the serial port
+    String currentLine = "";        // make a String to hold incoming data from the client
+    while (client.connected()) {    // loop while the client's connected
+      if (client.available()) {     // if there's bytes to read from the client,
+        char c = client.read();     // read a byte, then
+        Serial.write(c);            // print it out the serial monitor
+        if (c == '\n') {            // if the byte is a newline character
 
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
@@ -70,7 +75,7 @@ void loop() {
             client.println();
             // break out of the while loop:
             break;
-          } else {    // if you got a newline, then clear currentLine:
+          } else {  // if you got a newline, then clear currentLine:
             currentLine = "";
           }
         } else if (c != '\r') {  // if you got anything else but a carriage return character,
@@ -79,10 +84,10 @@ void loop() {
 
         // Check to see if the client request was "GET /H" or "GET /L":
         if (currentLine.endsWith("GET /H")) {
-          digitalWrite(LED_BUILTIN, HIGH);               // GET /H turns the LED on
+          digitalWrite(LED_BUILTIN, HIGH);  // GET /H turns the LED on
         }
         if (currentLine.endsWith("GET /L")) {
-          digitalWrite(LED_BUILTIN, LOW);                // GET /L turns the LED off
+          digitalWrite(LED_BUILTIN, LOW);  // GET /L turns the LED off
         }
       }
     }

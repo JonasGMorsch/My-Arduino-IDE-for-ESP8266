@@ -1,5 +1,5 @@
 # -*- python -*-
-# Copyright (C) 2009-2018 Free Software Foundation, Inc.
+# Copyright (C) 2009-2024 Free Software Foundation, Inc.
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ import gdb
 import os
 import os.path
 
-pythondir = '/builds/idf/crosstool-NG/builds/riscv32-esp-elf/share/gcc-8.4.0/python'
+pythondir = '/builds/idf/crosstool-NG/builds/riscv32-esp-elf/share/gcc-14.2.0/python'
 libdir = '/builds/idf/crosstool-NG/builds/riscv32-esp-elf/riscv32-esp-elf/lib'
 
 # This file might be loaded when there is no current objfile.  This

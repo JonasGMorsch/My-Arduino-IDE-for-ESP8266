@@ -1,10 +1,10 @@
 This is openocd.info, produced by makeinfo version 6.3 from
 openocd.texi.
 
-This User's Guide documents release , dated 5 July 2022, of the Open
-On-Chip Debugger (OpenOCD).
+This User's Guide documents release v0.12.0, dated 22 April 2025, of the
+Open On-Chip Debugger (OpenOCD).
 
-   * Copyright (C) 2008 The OpenOCD Project
+   * Copyright (C) 2008-2022 The OpenOCD Project
    * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
    * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
    * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
@@ -27,10 +27,10 @@ File: openocd.info,  Node: Top,  Next: About,  Up: (dir)
 OpenOCD User's Guide
 ********************
 
-This User's Guide documents release , dated 5 July 2022, of the Open
-On-Chip Debugger (OpenOCD).
+This User's Guide documents release v0.12.0, dated 22 April 2025, of the
+Open On-Chip Debugger (OpenOCD).
 
-   * Copyright (C) 2008 The OpenOCD Project
+   * Copyright (C) 2008-2022 The OpenOCD Project
    * Copyright (C) 2007-2008 Spencer Oliver <spen@spen-soft.co.uk>
    * Copyright (C) 2008-2010 Oyvind Harboe <oyvind.harboe@zylin.com>
    * Copyright (C) 2008 Duane Ellis <openocd@duaneellis.com>
@@ -382,9 +382,7 @@ built-in low-cost debug adapter and USB-to-serial solution.
      Link <http://www.distortec.com/jtag-lock-pick-tiny-2> FT232H-based
 
    * GW16042
-     Link:
-     <http://shop.gateworks.com/index.php?route=product/product&path=70_80&product_id=64>
-     FT2232H-based
+     Link: <https://www.gateworks.com/> FT2232H-based
 
 2.3 USB-JTAG / Altera USB-Blaster compatibles
 =============================================
@@ -426,8 +424,7 @@ also exists on the STM32 Primer2, but that is wired for SWD and not
 JTAG, thus not supported.
 
    * Raisonance RLink
-     Link:
-     <http://www.mcu-raisonance.com/~rlink-debugger-programmer__microcontrollers__tool~tool__T018:4cn9ziz4bnx6.html>
+     Link: <https://www.raisonance.com/rlink.html>
    * STM32 Primer
      Link: <http://www.stm32circle.com/resources/stm32primer.php>
    * STM32 Primer2
@@ -450,6 +447,12 @@ STMicroelectronics chips, notably STM32 and STM8.
    * STLINK-V3
      This is available standalone and as part of some kits.
      Link: <http://www.st.com/stlink-v3>
+   * STLINK-V3PWR
+     This is available standalone.  Beside the debugger functionality,
+     the probe includes a SMU (source measurement unit) aimed at
+     analyzing power consumption during code execution.  The SMU is not
+     supported by OpenOCD.
+     Link: <http://www.st.com/stlink-v3pwr>
 
 For info the original ST-LINK enumerates using the mass storage usb
 class; however, its implementation is completely broken.  The result is
@@ -496,6 +499,9 @@ connecting debuggers to ARM Cortex based targets
 
    * ARM-JTAG-EW
      Link: <http://www.olimex.com/dev/arm-jtag-ew.html>
+
+   * angie
+     Link: <https://nanoxplore.org/>
 
    * Buspirate
      Link: <http://dangerousprototypes.com/bus-pirate-manual/>
@@ -598,9 +604,8 @@ USB-based ones.
      A driver for Cadence virtual Debug Interface to emulated or
      simulated targets.  It implements a client connecting to the vdebug
      server, which in turn communicates with the emulated or simulated
-     RTL model through a transactor.  The current version supports only
-     JTAG as a transport, but other virtual transports, like DAP are
-     planned.
+     RTL model through a transactor.  The driver supports JTAG and
+     DAP-level transports.
 
    * jtag_dpi
      A JTAG driver acting as a client for the SystemVerilog Direct
@@ -612,6 +617,9 @@ USB-based ones.
    * xlnx_pcie_xvc
      A JTAG driver exposing Xilinx Virtual Cable over PCI Express to
      OpenOCD as JTAG/SWD interface.
+
+   * linuxspidev
+     A SPI based SWD driver using Linux SPI devices.
 
    * linuxgpiod
      A bitbang JTAG driver using Linux GPIO through library libgpiod.
@@ -905,16 +913,16 @@ microcontroller:
      source [find interface/ftdi/signalyzer.cfg]
 
      # GDB can also flash my flash!
-     gdb_memory_map enable
-     gdb_flash_program enable
+     gdb memory_map enable
+     gdb flash_program enable
 
      source [find target/sam7x256.cfg]
 
 Here is the command line equivalent of that configuration:
 
      openocd -f interface/ftdi/signalyzer.cfg \
-             -c "gdb_memory_map enable" \
-             -c "gdb_flash_program enable" \
+             -c "gdb memory_map enable" \
+             -c "gdb flash_program enable" \
              -f target/sam7x256.cfg
 
 You could wrap such long command lines in shell scripts, each supporting
@@ -2011,12 +2019,14 @@ configuration (before those ports are opened).
 
 For reasons including security, you may wish to prevent remote access
 using one or more of these ports.  In such cases, just specify the
-relevant port number as "disabled".  If you disable all access through
-TCP/IP, you will need to use the command line '-pipe' option.
+relevant port number as "disabled".
 
- -- Config Command: gdb_port [number]
+You can request the operating system to select one of the available
+ports for the server by specifying the relevant port number as "0".
+
+ -- Config Command: gdb port [number]
      Normally gdb listens to a TCP/IP port, but GDB can also communicate
-     via pipes(stdin/out or named pipes).  The name "gdb_port" stuck
+     via pipes(stdin/out or named pipes).  The name "gdb port" stuck
      because it covers probably more than 90% of the normal use cases.
 
      No arguments reports GDB port.  "pipe" means listen to stdin output
@@ -2031,7 +2041,7 @@ TCP/IP, you will need to use the command line '-pipe' option.
      /var/gdb, /var/gdbo.
 
      The GDB port for the first target will be the base port, the second
-     target will listen on gdb_port + 1, and so on.  When not specified
+     target will listen on port + 1, and so on.  When not specified
      during the configuration stage, the port NUMBER defaults to 3333.
      When NUMBER is not a numeric value, incrementing it to compute the
      next port number does not work.  In this case, specify the proper
@@ -2039,12 +2049,12 @@ TCP/IP, you will need to use the command line '-pipe' option.
      commands 'target create' or '$target_name configure'.  *Note option
      -gdb-port: gdbportoverride.
 
-     Note: when using "gdb_port pipe", increasing the default remote
+     Note: when using "gdb port pipe", increasing the default remote
      timeout in gdb (with 'set remotetimeout') is recommended.  An
      insufficient timeout may cause initialization to fail with "Unknown
      remote qXfer reply: OK".
 
- -- Config Command: tcl_port [number]
+ -- Config Command: tcl port [number]
      Specify or query the port used for a simplified RPC connection that
      can be used by clients to issue TCL commands and get the output
      from the Tcl engine.  Intended as a machine interface.  When not
@@ -2052,7 +2062,7 @@ TCP/IP, you will need to use the command line '-pipe' option.
      to 6666.  When specified as "disabled", this service is not
      activated.
 
- -- Config Command: telnet_port [number]
+ -- Config Command: telnet port [number]
      Specify or query the port on which to listen for incoming telnet
      connections.  This port is intended for interaction with one human
      through TCL commands.  When not specified during the configuration
@@ -2067,42 +2077,42 @@ are static and global.  *Note Target Configuration: targetconfiguration,
 about configuring individual targets.  *Note Target Events:
 targetevents, about configuring target-specific event handling.
 
- -- Command: gdb_breakpoint_override ['hard'|'soft'|'disable']
+ -- Command: gdb breakpoint_override ['hard'|'soft'|'disable']
      Force breakpoint type for gdb 'break' commands.  This option
      supports GDB GUIs which don't distinguish hard versus soft
      breakpoints, if the default OpenOCD and GDB behaviour is not
      sufficient.  GDB normally uses hardware breakpoints if the memory
      map has been set up for flash regions.
 
- -- Config Command: gdb_flash_program ('enable'|'disable')
+ -- Config Command: gdb flash_program ('enable'|'disable')
      Set to 'enable' to cause OpenOCD to program the flash memory when a
      vFlash packet is received.  The default behaviour is 'enable'.
 
- -- Config Command: gdb_memory_map ('enable'|'disable')
+ -- Config Command: gdb memory_map ('enable'|'disable')
      Set to 'enable' to cause OpenOCD to send the memory configuration
      to GDB when requested.  GDB will then know when to set hardware
-     breakpoints, and program flash using the GDB load command.
-     'gdb_flash_program enable' must also be enabled for flash
-     programming to work.  Default behaviour is 'enable'.  *Note
-     gdb_flash_program: gdbflashprogram.
+     breakpoints, and program flash using the GDB load command.  'gdb
+     flash_program enable' must also be enabled for flash programming to
+     work.  Default behaviour is 'enable'.  *Note gdb flash_program:
+     gdbflashprogram.
 
- -- Config Command: gdb_report_data_abort ('enable'|'disable')
+ -- Config Command: gdb report_data_abort ('enable'|'disable')
      Specifies whether data aborts cause an error to be reported by GDB
      memory read packets.  The default behaviour is 'disable'; use
      'enable' see these errors reported.
 
- -- Config Command: gdb_report_register_access_error
+ -- Config Command: gdb report_register_access_error
           ('enable'|'disable')
      Specifies whether register accesses requested by GDB register
      read/write packets report errors or not.  The default behaviour is
      'disable'; use 'enable' see these errors reported.
 
- -- Config Command: gdb_target_description ('enable'|'disable')
+ -- Config Command: gdb target_description ('enable'|'disable')
      Set to 'enable' to cause OpenOCD to send the target descriptions to
      gdb via qXfer:features:read packet.  The default behaviour is
      'enable'.
 
- -- Command: gdb_save_tdesc
+ -- Command: gdb save_tdesc
      Saves the target description file to the local file system.
 
      The file name is target_name.xml.
@@ -2216,6 +2226,51 @@ adapter.
      external configuration (such as jumpering) changes what the
      hardware can support.
 
+ -- Config Command: adapter gpio [ 'tdo' | 'tdi' | 'tms' | 'tck' |
+          'trst' | 'swdio' | 'swdio_dir' | 'swclk' | 'srst' | 'led' [
+          gpio_number | '-chip' chip_number | '-active-high' |
+          '-active-low' | '-push-pull' | '-open-drain' | '-open-source'
+          | '-pull-none' | '-pull-up' | '-pull-down' | '-init-inactive'
+          | '-init-active' | '-init-input' ] ]
+
+     Define the GPIO mapping that the adapter will use.  The following
+     signals can be defined:
+
+        - 'tdo', 'tdi', 'tms', 'tck', 'trst': JTAG transport signals
+        - 'swdio', 'swclk': SWD transport signals
+        - 'swdio_dir': optional swdio buffer control signal
+        - 'srst': system reset signal
+        - 'led': optional activity led
+
+     Some adapters require that the GPIO chip number is set in addition
+     to the GPIO number.  The configuration options enable signals to be
+     defined as active-high or active-low.  The output drive mode can be
+     set to push-pull, open-drain or open-source.  Most adapters will
+     have to emulate open-drain or open-source drive modes by switching
+     between an input and output.  Input and output signals can be
+     instructed to use a pull-up or pull-down resistor, assuming it is
+     supported by the adaptor driver and hardware.  The initial state of
+     outputs may also be set, "active" state means 1 for active-high
+     outputs and 0 for active-low outputs.  Bidirectional signals may
+     also be initialized as an input.  If the swdio signal is buffered
+     the buffer direction can be controlled with the swdio_dir signal;
+     the active state means that the buffer should be set as an output
+     with respect to the adapter.  The command options are cumulative
+     with later commands able to override settings defined by earlier
+     ones.  The two commands 'gpio led 7 -active-high' and 'gpio led
+     -chip 1 -active-low' sent sequentially are equivalent to issuing
+     the single command 'gpio led 7 -chip 1 -active-low'.  It is not
+     permissible to set the drive mode or initial state for signals
+     which are inputs.  The drive mode for the srst and trst signals
+     must be set with the 'adapter reset_config' command.  It is not
+     permissible to set the initial state of swdio_dir as it is derived
+     from the initial state of swdio.  The command 'adapter gpio' prints
+     the current configuration for all GPIOs while the command 'adapter
+     gpio gpio_name' prints the current configuration for gpio_name.
+     Not all adapters support this generic GPIO mapping, some require
+     their own commands to define the GPIOs used.  Adapters that support
+     the generic mapping may not support all of the listed options.
+
  -- Command: adapter name
      Returns the name of the debug adapter driver being used.
 
@@ -2234,9 +2289,9 @@ adapter.
      Specifies the SERIAL_STRING of the adapter to use.  If this command
      is not specified, serial strings are not checked.  Only the
      following adapter drivers use the serial string from this command:
-     aice (aice_usb), arm-jtag-ew, cmsis_dap, ft232r, ftdi, hla (stlink,
-     ti-icdi), jlink, kitprog, opendus, openjtag, osbdm, presto, rlink,
-     st-link, usb_blaster (ublast2), usbprog, vsllink, xds110.
+     arm-jtag-ew, cmsis_dap, esp_usb_jtag, ft232r, ftdi, hla (ti-icdi),
+     jlink, kitprog, opendus, openjtag, osbdm, presto, rlink, st-link,
+     usb_blaster (ublast2), usbprog, vsllink, xds110.
 
 8.2 Interface Drivers
 =====================
@@ -2257,6 +2312,9 @@ when OpenOCD is configured, in order to be made available at run time.
           Displays status of RTCK option.  Optionally sets that option
           first.
 
+ -- Interface Driver: angie
+     This is the NanoXplore's ANGIE USB-JTAG Adapter.
+
  -- Interface Driver: arm-jtag-ew
      Olimex ARM-JTAG-EW USB adapter This has one driver-specific
      command:
@@ -2272,27 +2330,37 @@ when OpenOCD is configured, in order to be made available at run time.
      ARM CMSIS-DAP compliant based adapter v1 (USB HID based) or v2 (USB
      bulk).
 
-      -- Config Command: cmsis_dap_vid_pid [vid pid]+
+      -- Config Command: cmsis-dap vid_pid [vid pid]+
           The vendor ID and product ID of the CMSIS-DAP device.  If not
           specified the driver will attempt to auto detect the CMSIS-DAP
           device.  Currently, up to eight [VID, PID] pairs may be given,
           e.g.
-               cmsis_dap_vid_pid 0xc251 0xf001 0x0d28 0x0204
+               cmsis-dap vid_pid 0xc251 0xf001 0x0d28 0x0204
 
-      -- Config Command: cmsis_dap_backend ['auto'|'usb_bulk'|'hid']
+      -- Config Command: cmsis-dap backend ['auto'|'usb_bulk'|'hid']
           Specifies how to communicate with the adapter:
 
              - 'hid' Use HID generic reports - CMSIS-DAP v1
              - 'usb_bulk' Use USB bulk - CMSIS-DAP v2
              - 'auto' First try USB bulk CMSIS-DAP v2, if not found try
-               HID CMSIS-DAP v1.  This is the default if
-               'cmsis_dap_backend' is not specified.
+               HID CMSIS-DAP v1.  This is the default if 'cmsis-dap
+               backend' is not specified.
 
-      -- Config Command: cmsis_dap_usb interface [number]
+      -- Config Command: cmsis-dap usb interface [number]
           Specifies the NUMBER of the USB interface to use in v2 mode
           (USB bulk).  In most cases need not to be specified and
           interfaces are searched by interface string or for user class
           interface.
+
+      -- Command: cmsis-dap quirk ['enable'|'disable']
+          Enables or disables the following workarounds of known
+          CMSIS-DAP adapter quirks:
+             - disconnect and re-connect before sending a switch
+               sequence
+             - packets pipelining is suppressed, only one packet at a
+               time is submitted to the adapter
+          The quirk workarounds are disabled by default.  The command
+          without a parameter displays current setting.
 
       -- Command: cmsis-dap info
           Display various device information, like hardware version,
@@ -2522,9 +2590,10 @@ when OpenOCD is configured, in order to be made available at run time.
           not reattach.  If not specified, default 0xFFFF is used.
 
  -- Interface Driver: remote_bitbang
-     Drive JTAG from a remote process.  This sets up a UNIX or TCP
-     socket connection with a remote process and sends ASCII encoded
-     bitbang requests to that process instead of directly driving JTAG.
+     Drive JTAG and SWD from a remote process.  This sets up a UNIX or
+     TCP socket connection with a remote process and sends ASCII encoded
+     bitbang requests to that process instead of directly driving JTAG
+     and SWD.
 
      The remote_bitbang driver is useful for debugging software running
      on processors which are being simulated.
@@ -2538,12 +2607,29 @@ when OpenOCD is configured, in order to be made available at run time.
           using TCP, or the name of the UNIX socket to use if
           remote_bitbang port is 0.
 
+      -- Config Command: remote_bitbang use_remote_sleep (on|off)
+          If this option is enabled, delays will not be executed locally
+          but instead forwarded to the remote host.  This is useful if
+          the remote host performs its own request queuing rather than
+          executing requests immediately.
+
+          This is disabled by default.  This option must only be enabled
+          if the given remote_bitbang host supports receiving the delay
+          information.
+
      For example, to connect remotely via TCP to the host foobar you
      might have something like:
 
           adapter driver remote_bitbang
           remote_bitbang port 3335
           remote_bitbang host foobar
+
+     And if you also wished to enable remote sleeping:
+
+          adapter driver remote_bitbang
+          remote_bitbang port 3335
+          remote_bitbang host foobar
+          remote_bitbang use_remote_sleep on
 
      To connect to another process running locally via UNIX sockets with
      socket named mysocket:
@@ -2620,6 +2706,11 @@ when OpenOCD is configured, in order to be made available at run time.
       -- Command: jlink jtag ['2'|'3']
           Set the JTAG command version to be used.  Without argument,
           show the actual JTAG command version.
+      -- Command: jlink targetpower ['0'|'1'|'on'|'off']
+          Switch the 5 V target power supply on or off.  Without
+          argument, show the state of the target power supply.  The
+          target power supply is usually connected to pin 19 of the
+          20-pin connector.
       -- Command: jlink config
           Display the device configuration.
       -- Command: jlink config targetpower ['on'|'off']
@@ -2670,7 +2761,7 @@ when OpenOCD is configured, in order to be made available at run time.
      KitProg is an SWD-only adapter that is designed to be used with
      Cypress's PSoC and PRoC device families, but it is possible to use
      it with some other devices.  If you are using this adapter with a
-     PSoC or a PRoC, you may need to add 'kitprog_init_acquire_psoc' or
+     PSoC or a PRoC, you may need to add 'kitprog init_acquire_psoc' or
      'kitprog acquire_psoc' to your configuration script.
 
      Note that this driver is for the proprietary KitProg protocol, not
@@ -2693,15 +2784,15 @@ when OpenOCD is configured, in order to be made available at run time.
           after every target reset in order to re-establish
           communications with the target.
         * Due in part to the limitation above, KitProg devices with
-          firmware below version 2.14 will need to use
-          'kitprog_init_acquire_psoc' in order to communicate with PSoC
-          5LP devices.  This is because, assuming debug is not disabled
-          on the PSoC, the PSoC 5LP needs its JTAG interface switched to
+          firmware below version 2.14 will need to use 'kitprog
+          init_acquire_psoc' in order to communicate with PSoC 5LP
+          devices.  This is because, assuming debug is not disabled on
+          the PSoC, the PSoC 5LP needs its JTAG interface switched to
           SWD mode before communication can begin, but prior to firmware
           2.14, "JTAG to SWD" could only be sent with an acquisition
           sequence.
 
-      -- Config Command: kitprog_init_acquire_psoc
+      -- Config Command: kitprog init_acquire_psoc
           Indicate that a PSoC acquisition sequence needs to be run
           during adapter init.  Please be aware that the acquisition
           sequence hard-resets the target.
@@ -2835,32 +2926,28 @@ when OpenOCD is configured, in order to be made available at run time.
      using ST firmware update utility to upgrade ST-LINK firmware even
      if current version reported is V2.J21.S4.
 
-      -- Config Command: hla_device_desc description
+      -- Config Command: hla device_desc description
           Currently Not Supported.
 
-      -- Config Command: hla_layout ('stlink'|'icdi'|'nulink')
+      -- Config Command: hla layout ('icdi'|'nulink')
           Specifies the adapter layout to use.
 
-      -- Config Command: hla_vid_pid [vid pid]+
+      -- Config Command: hla vid_pid [vid pid]+
           Pairs of vendor IDs and product IDs of the device.
 
-      -- Config Command: hla_stlink_backend (usb | tcp [port])
-          _ST-Link only:_ Choose between 'exclusive' USB communication
-          (the default backend) or 'shared' mode using ST-Link TCP
-          server (the default port is 7184).
-
-          _Note:_ ST-Link TCP server is a binary application provided by
-          ST available from ST-LINK server software module
-          (https://www.st.com/en/development-tools/st-link-server.html).
-
-      -- Command: hla_command command
+      -- Command: hla command command
           Execute a custom adapter-specific command.  The COMMAND string
           is passed as is to the underlying adapter layout handler.
 
  -- Interface Driver: st-link
      This is a driver that supports STMicroelectronics adapters
-     ST-LINK/V2 (from firmware V2J24) and STLINK-V3, thanks to a new API
-     that provides directly access the arm ADIv5 DAP.
+     ST-LINK/V2 (from 2015 firmware V2J24), STLINK-V3 and STLINK-V3PWR,
+     thanks to a new API that provides directly access the arm ADIv5
+     DAP.
+
+     The older API that requires HLA transport is deprecated and will be
+     dropped from OpenOCD. In mean time it's still available by using
+     'interface/stlink-hla.cfg'.
 
      The new API provide access to multiple AP on the same DAP, but the
      maximum number of the AP port is limited by the specific firmware
@@ -2960,62 +3047,12 @@ when OpenOCD is configured, in order to be made available at run time.
      and various peripherals' kernel drivers.  The driver restores the
      previous configuration on exit.
 
-     GPIO numbers >= 32 can't be used for performance reasons.
+     GPIO numbers >= 32 can't be used for performance reasons.  GPIO
+     configuration is handled by the generic command *note 'adapter
+     gpio': adapter gpio.
 
      See 'interface/raspberrypi-native.cfg' for a sample config and
-     pinout.
-
-      -- Config Command: bcm2835gpio jtag_nums TCK TMS TDI TDO
-          Set JTAG transport GPIO numbers for TCK, TMS, TDI, and TDO (in
-          that order).  Must be specified to enable JTAG transport.
-          These pins can also be specified individually.
-
-      -- Config Command: bcm2835gpio tck_num TCK
-          Set TCK GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio jtag_nums'.
-
-      -- Config Command: bcm2835gpio tms_num TMS
-          Set TMS GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio jtag_nums'.
-
-      -- Config Command: bcm2835gpio tdo_num TDO
-          Set TDO GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio jtag_nums'.
-
-      -- Config Command: bcm2835gpio tdi_num TDI
-          Set TDI GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio jtag_nums'.
-
-      -- Config Command: bcm2835gpio swd_nums SWCLK SWDIO
-          Set SWD transport GPIO numbers for SWCLK and SWDIO (in that
-          order).  Must be specified to enable SWD transport.  These
-          pins can also be specified individually.
-
-      -- Config Command: bcm2835gpio swclk_num SWCLK
-          Set SWCLK GPIO number.  Must be specified to enable SWD
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio swd_nums'.
-
-      -- Config Command: bcm2835gpio swdio_num SWDIO
-          Set SWDIO GPIO number.  Must be specified to enable SWD
-          transport.  Can also be specified using the configuration
-          command 'bcm2835gpio swd_nums'.
-
-      -- Config Command: bcm2835gpio swdio_dir_num SWDIO DIR
-          Set SWDIO direction control pin GPIO number.  If specified,
-          this pin can be used to control the direction of an external
-          buffer on the SWDIO pin (set=output mode, clear=input mode).
-          If not specified, this feature is disabled.
-
-      -- Config Command: bcm2835gpio srst_num SRST
-          Set SRST GPIO number.  Must be specified to enable SRST.
-
-      -- Config Command: bcm2835gpio trst_num TRST
-          Set TRST GPIO number.  Must be specified to enable TRST.
+     'interface/raspberrypi-gpio-connector.cfg' for pinout.
 
       -- Config Command: bcm2835gpio speed_coeffs SPEED_COEFF
                SPEED_OFFSET
@@ -3023,11 +3060,24 @@ when OpenOCD is configured, in order to be made available at run time.
           unspecified, speed_coeff defaults to 113714, and speed_offset
           defaults to 28.
 
+      -- Config Command: bcm2835gpio peripheral_mem_dev DEVICE
+          Set the device path for access to the memory mapped GPIO
+          control registers.  Uses '/dev/gpiomem' by default, this is
+          also the preferred option with respect to system security.  If
+          overridden to '/dev/mem':
+             - OpenOCD needs 'cap_sys_rawio' or run as root to open
+               '/dev/mem'.  Please be aware of security issues imposed
+               by running OpenOCD with elevated user rights and by
+               '/dev/mem' itself.
+             - correct 'peripheral_base' must be configured.
+             - GPIO 0-27 pads are set to the limited slew rate and drive
+               strength is reduced to 4 mA (2 mA on RPi 4).
+
       -- Config Command: bcm2835gpio peripheral_base BASE
-          Set the peripheral base register address to access GPIOs.  For
-          the RPi1, use 0x20000000.  For RPi2 and RPi3, use 0x3F000000.
-          For RPi4, use 0xFE000000.  A full list can be found in the
-          official guide
+          Set the peripheral base register address to access GPIOs.
+          Ignored if '/dev/gpiomem' is used.  For the RPi1, use
+          0x20000000.  For RPi2 and RPi3, use 0x3F000000.  For RPi4, use
+          0xFE000000.  A full list can be found in the official guide
           (https://www.raspberrypi.org/documentation/hardware/raspberrypi/peripheral_addresses.md).
 
  -- Interface Driver: imx_gpio
@@ -3048,77 +3098,8 @@ when OpenOCD is configured, in order to be made available at run time.
      will be used, otherwise /dev/mem will be used.  The driver restores
      the GPIO state on exit.
 
-     All four GPIO ports are available.  GPIOs numbered 0 to 31 are
-     mapped to GPIO port 0, GPIO numbers 32 to 63 are mapped to GPIO
-     port 1 and so on.
-
-     See 'interface/beaglebone-swd-native.cfg' for a sample
-     configuration file.
-
-      -- Config Command: am335xgpio jtag_nums TCK TMS TDI TDO
-          Set JTAG transport GPIO numbers for TCK, TMS, TDI, and TDO (in
-          that order).  Must be specified to enable JTAG transport.
-          These pins can also be specified individually.
-
-      -- Config Command: am335xgpio tck_num TCK
-          Set TCK GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio jtag_nums'.
-
-      -- Config Command: am335xgpio tms_num TMS
-          Set TMS GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio jtag_nums'.
-
-      -- Config Command: am335xgpio tdo_num TDO
-          Set TDO GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio jtag_nums'.
-
-      -- Config Command: am335xgpio tdi_num TDI
-          Set TDI GPIO number.  Must be specified to enable JTAG
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio jtag_nums'.
-
-      -- Config Command: am335xgpio swd_nums SWCLK SWDIO
-          Set SWD transport GPIO numbers for SWCLK and SWDIO (in that
-          order).  Must be specified to enable SWD transport.  These
-          pins can also be specified individually.
-
-      -- Config Command: am335xgpio swclk_num SWCLK
-          Set SWCLK GPIO number.  Must be specified to enable SWD
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio swd_nums'.
-
-      -- Config Command: am335xgpio swdio_num SWDIO
-          Set SWDIO GPIO number.  Must be specified to enable SWD
-          transport.  Can also be specified using the configuration
-          command 'am335xgpio swd_nums'.
-
-      -- Config Command: am335xgpio swdio_dir_num SWDIO_DIR
-          Set SWDIO direction control pin GPIO number.  If specified,
-          this pin can be used to control the direction of an external
-          buffer on the SWDIO pin.  The direction control state can be
-          set with the command 'am335xgpio swdio_dir_output_state'.  If
-          not specified this feature is disabled.
-
-      -- Config Command: am335xgpio swdio_dir_output_state OUTPUT_STATE
-          Set the state required for an external SWDIO buffer to be an
-          output.  Valid values are 'on' (default) and 'off'.
-
-      -- Config Command: am335xgpio srst_num SRST
-          Set SRST GPIO number.  Must be specified to enable SRST.
-
-      -- Config Command: am335xgpio trst_num TRST
-          Set TRST GPIO number.  Must be specified to enable TRST.
-
-      -- Config Command: am335xgpio led_num LED
-          Set activity LED GPIO number.  If not specified an activity
-          LED is not enabled.
-
-      -- Config Command: am335xgpio led_on_state ON_STATE
-          Set required logic level for the LED to be on.  Valid values
-          are 'on' (default) and 'off'.
+     All four GPIO ports are available.  GPIO configuration is handled
+     by the generic command *note 'adapter gpio': adapter gpio.
 
       -- Config Command: am335xgpio speed_coeffs SPEED_COEFF
                SPEED_OFFSET
@@ -3126,77 +3107,79 @@ when OpenOCD is configured, in order to be made available at run time.
           unspecified speed_coeff defaults to 600000 and speed_offset
           defaults to 575.
 
+     See 'interface/beaglebone-swd-native.cfg' for a sample
+     configuration file.
+
+ -- Interface Driver: linuxspidev
+     Linux provides userspace access to SPI through spidev.  Full duplex
+     SPI transactions are used to simultaneously read and write to/from
+     the target to emulate the SWD transport.
+
+      -- Config Command: spidev path path
+          Specifies the path to the spidev device.
+
+      -- Config Command: spidev mode value
+          Set the mode of the spi port with optional bit flags
+          (default=3).  See /usr/include/linux/spi/spidev.h for all of
+          the SPI mode options.
+
+      -- Config Command: spidev queue_entries value
+          Set the maximum number of queued transactions per spi exchange
+          (default=64).  More queued transactions may offer greater
+          performance when the target doesn't need to wait.  On the
+          contrary higher numbers will reduce performance when the
+          target requests a wait as all queued transactions will need to
+          be exchanged before spidev can see the wait request.
+
+     See 'tcl/interface/spidev_example.cfg' for a sample configuration
+     file.
+
+     Electrical connections:
+          +--------------+                +--------------+
+          |              |     1K         |              |
+          |          MOSI|---/\/\/\---+   |              |
+          |     Host     |            |   |    Target    |
+          |          MISO|------------+---|SWDIO         |
+          |              |                |              |
+          |           SCK|----------------|SWDCLK        |
+          |              |                |              |
+          +--------------+                +--------------+
+
+     The 1K resistor works well with most MCUs up to 3 MHz.  A lower
+     resistance could be used to achieve higher speeds granted that the
+     target SWDIO pin has enough drive strength to pull the signal high
+     while being pulled low by this resistor.
+
+     If you are having trouble here are some tips:
+
+        * Make sure MISO and MOSI are tied together with a 1K resistor.
+          MISO should be attached to the target.
+
+        * Make sure that your host and target are using the same I/O
+          voltage (for example both are using 3.3 volts).
+
+        * Your host's SPI port may not idle low.  This will lead to an
+          additional clock edge being sent to the target, causing the
+          host and target being 1 clock off from each other.  Try
+          setting SPI_MOSI_IDLE_LOW in spi_mode.  Try using a different
+          spi_mode (0 - 3).
+
+        * Your target may pull SWDIO and/or SWDCLK high.  This will
+          create an extra edge when the host releases control of the SPI
+          port at the end of a transaction.  You'll need to confirm this
+          with a scope or meter.  Try installing 10K resistors on SWDIO
+          and SWDCLK to ground to stop this.
+
  -- Interface Driver: linuxgpiod
      Linux provides userspace access to GPIO through libgpiod since
      Linux kernel version v4.6.  The driver emulates either JTAG or SWD
-     transport through bitbanging.
+     transport through bitbanging.  There are no driver-specific
+     commands, all GPIO configuration is handled by the generic command
+     *note 'adapter gpio': adapter gpio.  This driver supports the
+     resistor pull options provided by the 'adapter gpio' command but
+     the underlying hardware may not be able to support them.
 
-     See 'interface/dln-2-gpiod.cfg' for a sample config.
-
-      -- Config Command: linuxgpiod gpiochip CHIP
-          Set the GPIO chip number for all GPIOs used by linuxgpiod.  If
-          GPIOs use different GPIO chips then the individual GPIO
-          configuration commands (i.e., not 'linuxgpiod jtag_nums' or
-          'linuxgpiod swd_nums') can be used to set chip numbers
-          independently for each GPIO.
-
-      -- Config Command: linuxgpiod jtag_nums TCK TMS TDI TDO
-          Set JTAG transport GPIO numbers for TCK, TMS, TDI, and TDO (in
-          that order).  Must be specified to enable JTAG transport.
-          These pins can also be specified individually.
-
-      -- Config Command: linuxgpiod tck_num [CHIP] TCK
-          Set TCK GPIO number, and optionally TCK chip number.  Must be
-          specified to enable JTAG transport.  Can also be specified
-          using the configuration command 'linuxgpiod jtag_nums'.
-
-      -- Config Command: linuxgpiod tms_num [CHIP] TMS
-          Set TMS GPIO number, and optionally TMS chip number.  Must be
-          specified to enable JTAG transport.  Can also be specified
-          using the configuration command 'linuxgpiod jtag_nums'.
-
-      -- Config Command: linuxgpiod tdo_num [CHIP] TDO
-          Set TDO GPIO number, and optionally TDO chip number.  Must be
-          specified to enable JTAG transport.  Can also be specified
-          using the configuration command 'linuxgpiod jtag_nums'.
-
-      -- Config Command: linuxgpiod tdi_num [CHIP] TDI
-          Set TDI GPIO number, and optionally TDI chip number.  Must be
-          specified to enable JTAG transport.  Can also be specified
-          using the configuration command 'linuxgpiod jtag_nums'.
-
-      -- Config Command: linuxgpiod trst_num [CHIP] TRST
-          Set TRST GPIO number, and optionally TRST chip number.  Must
-          be specified to enable TRST.
-
-      -- Config Command: linuxgpiod swd_nums SWCLK SWDIO
-          Set SWD transport GPIO numbers for SWCLK and SWDIO (in that
-          order).  Must be specified to enable SWD transport.  These
-          pins can also be specified individually.
-
-      -- Config Command: linuxgpiod swclk_num [CHIP] SWCLK
-          Set SWCLK GPIO number, and optionally SWCLK chip number.  Must
-          be specified to enable SWD transport.  Can also be specified
-          using the configuration command 'linuxgpiod swd_nums'.
-
-      -- Config Command: linuxgpiod swdio_num [CHIP] SWDIO
-          Set SWDIO GPIO number, and optionally SWDIO chip number.  Must
-          be specified to enable SWD transport.  Can also be specified
-          using the configuration command 'linuxgpiod swd_nums'.
-
-      -- Config Command: linuxgpiod swdio_dir_num [CHIP] SWDIO_DIR
-          Set SWDIO direction control GPIO number, and optionally SWDIO
-          direction control chip number.  If specified, this GPIO can be
-          used to control the direction of an external buffer connected
-          to the SWDIO GPIO (set=output mode, clear=input mode).
-
-      -- Config Command: linuxgpiod srst_num [CHIP] SRST
-          Set SRST GPIO number, and optionally SRST chip number.  Must
-          be specified to enable SRST.
-
-      -- Config Command: linuxgpiod led_num [CHIP] LED
-          Set activity LED GPIO number, and optionally activity LED chip
-          number.  If not specified an activity LED is not enabled.
+     See 'interface/dln-2-gpiod.cfg' for a sample configuration file.
 
  -- Interface Driver: sysfsgpio
      Linux legacy userspace access to GPIO through sysfs is deprecated
@@ -3221,6 +3204,12 @@ when OpenOCD is configured, in order to be made available at run time.
       -- Config Command: openjtag device_desc string
           The USB device description string of the adapter.  This value
           is only used with the standard variant.
+
+      -- Config Command: openjtag vid_pid vid pid
+          The USB vendor ID and product ID of the adapter.  If not
+          specified, default 0x0403:0x6001 is used.  This value is only
+          used with the standard variant.
+               openjtag vid_pid 0x403 0x6014
 
  -- Interface Driver: vdebug
      Cadence Virtual Debug Interface driver.
@@ -3322,10 +3311,10 @@ when OpenOCD is configured, in order to be made available at run time.
      JTAG circuitry and can be debugged without any additional hardware.
      Only an USB cable connected to the D+/D- pins is necessary.
 
-      -- Config Command: espusbjtag tdo
+      -- Command: espusbjtag tdo
           Returns the current state of the TDO line
 
-      -- Config Command: espusbjtag setio setio
+      -- Command: espusbjtag setio setio
           Manually set the status of the output lines with the order of
           (tdi tms tck trst srst)
                espusbjtag setio 0 1 0 1 0
@@ -3343,6 +3332,71 @@ when OpenOCD is configured, in order to be made available at run time.
           Set chip id to transfer to the ESP USB bridge board
                espusbjtag chip_id 1
 
+ -- Interface Driver: dmem Direct Memory access debug interface
+
+     The Texas Instruments K3 SoC family provides memory access to DAP
+     and coresight control registers.  This allows control over the
+     microcontrollers directly from one of the processors on the SOC
+     itself.
+
+     For maximum performance, the driver accesses the debug registers
+     directly over the SoC memory map.  The memory mapping requires read
+     and write permission to kernel memory via "/dev/mem" and assumes
+     that the system firewall configurations permit direct access to the
+     debug memory space.
+
+     +-----------+
+     |  OpenOCD  |   SoC mem map (/dev/mem)
+     |    on     +--------------+
+     | Cortex-A53|              |
+     +-----------+              |
+                                |
+     +-----------+        +-----v-----+
+     |Cortex-M4F <--------+           |
+     +-----------+        |           |
+                          |  DebugSS  |
+     +-----------+        |           |
+     |Cortex-M4F <--------+           |
+     +-----------+        +-----------+
+
+     NOTE: Firewalls are configurable in K3 SoC and depending on various
+     types of device configuration, this function may be blocked out.
+     Typical behavior observed in such cases is a firewall exception
+     report on the security controller and armv8 processor reporting a
+     system error.
+
+     See 'tcl/interface/ti_k3_am625-swd-native.cfg' for a sample
+     configuration file.
+
+      -- Command: dmem info
+          Print the DAPBUS dmem configuration.
+
+      -- Config Command: dmem device device_path
+          Set the DAPBUS memory access device (default: /dev/mem).
+
+      -- Config Command: dmem base_address base_address
+          Set the DAPBUS base address which is used to access CoreSight
+          compliant Access Ports (APs) directly.
+
+      -- Config Command: dmem ap_address_offset offset_address
+          Set the address offset between Access Ports (APs).
+
+      -- Config Command: dmem max_aps n
+          Set the maximum number of valid access ports on the SoC.
+
+      -- Config Command: dmem emu_ap_list n
+          Set the list of Access Ports (APs) that need to be emulated.
+          This emulation mode supports software translation of an AP
+          request into an address mapped transaction that does not rely
+          on physical AP hardware.  This maybe needed if the AP is
+          either denied access via memory map or protected using other
+          SoC mechanisms.
+
+      -- Config Command: dmem emu_base_address_range base_address
+               address_window_size
+          Set the emulated address and address window size.  Both of
+          these parameters must be aligned to page size.
+
 8.3 Transport Configuration
 ===========================
 
@@ -3353,21 +3407,17 @@ communicate with debug targets (or perhaps to program flash memory).
      displays the names of the transports supported by this version of
      OpenOCD.
 
- -- Command: transport select 'transport_name'
+ -- Command: transport select [transport_name]
      Select which of the supported transports to use in this OpenOCD
      session.
 
      When invoked with 'transport_name', attempts to select the named
      transport.  The transport must be supported by the debug adapter
      hardware and by the version of OpenOCD you are using (including the
-     adapter's driver).
-
-     If no transport has been selected and no 'transport_name' is
-     provided, 'transport select' auto-selects the first transport
-     supported by the debug adapter.
-
-     'transport select' always returns the name of the session's
-     selected transport, if any.
+     adapter's driver).  When invoked with no transport name:
+        - if no transport has been selected yet, it auto-selects the
+          first transport supported by the debug adapter
+        - it returns the name of the session's selected transport
 
 8.3.1 JTAG Transport
 --------------------
@@ -3990,6 +4040,11 @@ while others (including dots!)  are not.
           checking the sticky error bit.  This bit is normally checked
           after setting the CSYSPWRUPREQ bit, but some devices do not
           set the ack bit until sometime later.
+        * '-ir-bypass' NUMBER
+          Vendor specific bypass instruction, required by some
+          hierarchical JTAG routers where the normal BYPASS instruction
+          bypasses the whole router and a vendor specific bypass
+          instruction is required to access child nodes.
 
 10.4 Other TAP commands
 =======================
@@ -4307,6 +4362,10 @@ The following commands exist as subcommands of DAP instances:
      Set/get quirks mode for TI TMS450/TMS570 processors Disabled by
      default
 
+ -- Config Command: $dap_name nu_npcx_quirks ['enable']
+     Set/get quirks mode for Nuvoton NPCX/NPCD MCU families Disabled by
+     default
+
    ---------- Footnotes ----------
 
    (1) See the ST document titled: _STR91xFAxxx, Section 3.15 Jtag
@@ -4431,12 +4490,6 @@ command to list them.
           comply to GDB remote protocol.
         * 'mips_m4k' - a MIPS core.
         * 'mips_mips64' - a MIPS64 core.
-        * 'nds32_v2' - this is an Andes NDS32 v2 core (deprecated; would
-          be removed in v0.13.0).
-        * 'nds32_v3' - this is an Andes NDS32 v3 core (deprecated; would
-          be removed in v0.13.0).
-        * 'nds32_v3m' - this is an Andes NDS32 v3m core (deprecated;
-          would be removed in v0.13.0).
         * 'or1k' - this is an OpenRISC 1000 core.  The current
           implementation supports three JTAG TAP cores:
              - 'OpenCores TAP' (See:
@@ -4458,6 +4511,7 @@ command to list them.
           CPLD.
         * 'xscale' - this is actually an architecture, not a CPU type.
           It is based on the ARMv5 architecture.
+        * 'xtensa' - this is a generic Cadence/Tensilica Xtensa core.
 
 To avoid being confused by the variety of ARM based cores, remember this
 key point: _ARM is a technology licencing company_.  (See:
@@ -4586,9 +4640,10 @@ the boot loader.
           address, set up by the current operating system.
 
         * '-rtos' RTOS_TYPE - enable rtos support for target, RTOS_TYPE
-          can be one of 'auto', 'eCos', 'ThreadX', 'FreeRTOS', 'linux',
-          'ChibiOS', 'embKernel', 'mqx', 'uCOS-III', 'nuttx', 'RIOT',
-          'Zephyr' *Note RTOS Support: gdbrtossupport.
+          can be one of 'auto', 'none', 'eCos', 'ThreadX', 'FreeRTOS',
+          'linux', 'ChibiOS', 'embKernel', 'mqx', 'uCOS-III', 'nuttx',
+          'RIOT', 'Zephyr', 'rtkernel' *Note RTOS Support:
+          gdbrtossupport.
 
         * '-defer-examine' - skip target examination at initial JTAG
           chain scan and after a reset.  A manual call to arp_examine is
@@ -4601,6 +4656,37 @@ the boot loader.
           option with systems where multiple, independent cores are
           connected to separate access ports of the same DAP.
 
+        * '-dbgbase' DBG_BASE_ADDRESS - set the base address of the
+          debug controller.  This is ignored and not required for target
+          types that have the debug controller at fixed addresses, like
+          'cortex_m'.  On DAP based SoC, OpenOCD can parse the ROM table
+          in the DAP access port to identify the base address of the
+          debug controller, but the parsing can be slow on devices with
+          big ROM tables.  While using '-dbgbase' is suggested to speed
+          up the target examination, it is often the only viable
+          solution for devices with incorrect ROM table content or with
+          ROM table partially not accessible due to clock gating or
+          power management.
+
+        * '-coreid' COREID - set an index to identify the CPU or its
+          debug controller.
+
+             - When '-dbgbase' option is not provided on devices with
+               multiple CPUs on the same DAP access port (e.g.
+               'cortex_a', 'cortex_r4', 'aarch64' and 'armv8r'), this
+               option specifies that the ROM table parsing should select
+               the CPU in position COREID.
+
+             - On target type 'riscv', COREID specifies the hart
+               (HARdware Threads) on the DM (Debug Module).  It is used
+               on multi-hart devices to index a specific hart ID. When
+               not present, it's default value is zero.
+
+             - This value COREID is currently also used in other
+               contexts as a general CPU index, e.g.  in SMP nodes or to
+               select a specific CPU in a chip.  To avoid confusion,
+               these additional use cases are going to be dropped.
+
         * '-cti' CTI_NAME - set Cross-Trigger Interface (CTI) connected
           to the target.  Currently, only the 'aarch64' target makes use
           of this option, where it is a mandatory configuration for the
@@ -4608,11 +4694,11 @@ the boot loader.
           armcrosstrigger, for instruction on how to declare and control
           a CTI instance.
 
-        * '-gdb-port' NUMBER - see command 'gdb_port' for the possible
-          values of the parameter NUMBER, which are not only numeric
-          values.  Use this option to override, for this target only,
-          the global parameter set with command 'gdb_port'.  *Note
-          command gdb_port: gdb_port.
+        * '-gdb-port' NUMBER - *Note command gdb port: gdb port, for the
+          possible values of the parameter NUMBER, which are not only
+          numeric values.  Use this option to override, for this target
+          only, the global parameter set with command 'gdb port'.  *Note
+          command gdb port: gdb port.
 
         * '-gdb-max-connections' NUMBER - EXPERIMENTAL: set the maximum
           number of GDB connections that are allowed for the target.
@@ -4740,6 +4826,12 @@ The commands supported by OpenOCD target objects are:
      Displays the current target state: 'debug-running', 'halted',
      'reset', 'running', or 'unknown'.  (Also, *note Event Polling:
      eventpolling.)
+
+ -- Command: $target_name debug_reason
+     Displays the current debug reason: 'debug-request', 'breakpoint',
+     'watchpoint', 'watchpoint-and-breakpoint', 'single-step',
+     'target-not-halted', 'program-exit', 'exception-catch' or
+     'undefined'.
 
  -- Command: $target_name eventlist
      Displays a table listing all event handlers currently associated
@@ -5271,17 +5363,35 @@ activate driver-specific commands.
  -- Flash Driver: jtagspi
      Several FPGAs and CPLDs can retrieve their configuration
      (bitstream) from a SPI flash connected to them.  To access this
-     flash from the host, the device is first programmed with a special
-     proxy bitstream that exposes the SPI flash on the device's JTAG
-     interface.  The flash can then be accessed through JTAG.
+     flash from the host, some FPGA device provides dedicated JTAG
+     instructions, while other FPGA devices should be programmed with a
+     special proxy bitstream that exposes the SPI flash on the device's
+     JTAG interface.  The flash can then be accessed through JTAG.
 
-     Since signaling between JTAG and SPI is compatible, all that is
+     Since signalling between JTAG and SPI is compatible, all that is
      required for a proxy bitstream is to connect TDI-MOSI, TDO-MISO,
      TCK-CLK and activate the flash chip select when the JTAG state
-     machine is in SHIFT-DR. Such a bitstream for several Xilinx FPGAs
-     can be found in 'contrib/loaders/flash/fpga/xilinx_bscan_spi.py'.
-     It requires migen (https://github.com/m-labs/migen) and a Xilinx
-     toolchain to build.
+     machine is in SHIFT-DR.
+
+     Such a bitstream for several Xilinx FPGAs can be found in
+     'contrib/loaders/flash/fpga/xilinx_bscan_spi.py'.  It requires
+     migen (https://github.com/m-labs/migen) and a Xilinx toolchain to
+     build.
+
+     This mechanism with a proxy bitstream can also be used for FPGAs
+     from Intel and Efinix.  FPGAs from Lattice and Cologne Chip have
+     dedicated JTAG instructions and procedure to connect the JTAG to
+     the SPI signals and don't need a proxy bitstream.  Support for
+     these devices with dedicated procedure is provided by the pld
+     drivers.  For convenience the PLD drivers will provide the USERx
+     code for FPGAs with a proxy bitstream.  Currently the following PLD
+     drivers are able to support jtagspi:
+        * Efinix: proxy-bitstream
+        * Gatemate: dedicated procedure
+        * Intel/Altera: proxy-bitstream
+        * Lattice: dedicated procedure supporting ECP2, ECP3, ECP5,
+          Certus and Certus Pro devices
+        * AMD/Xilinx: proxy-bitstream
 
      This flash bank driver requires a target on a JTAG tap and will
      access that tap directly.  Since no support from the target is
@@ -5300,11 +5410,20 @@ activate driver-specific commands.
         * IR ...  is loaded into the JTAG IR to map the flash as the
           JTAG DR. For the bitstreams generated from
           'xilinx_bscan_spi.py' this is the USER1 instruction.
+               target create $_TARGETNAME testee -chain-position $_CHIPNAME.tap
+               set _USER1_INSTR_CODE 0x02
+               flash bank $_FLASHNAME jtagspi 0x0 0 0 0 \
+                          $_TARGETNAME $_USER1_INSTR_CODE
 
-          target create $_TARGETNAME testee -chain-position $_CHIPNAME.fpga
-          set _XILINX_USER1 0x02
-          flash bank $_FLASHNAME spi 0x0 0 0 0 \
-                     $_TARGETNAME $_XILINX_USER1
+        * The option '-pld' NAME is used to have support from the PLD
+          driver of pld device NAME.  The name is the name of the pld
+          device given during creation of the pld device.  Pld device
+          names are shown by the 'pld devices' command.
+
+               target create $_TARGETNAME testee -chain-position $_CHIPNAME.tap
+               set _JTAGSPI_CHAIN_ID $_CHIPNAME.pld
+               flash bank $_FLASHNAME jtagspi 0x0 0 0 0 \
+                          $_TARGETNAME -pld $_JTAGSPI_CHAIN_ID
 
       -- Command: jtagspi set bank_id name total_size page_size read_cmd
                unused pprg_cmd mass_erase_cmd sector_size
@@ -5558,6 +5677,61 @@ activate driver-specific commands.
      SiFive's Freedom E SPI controller, used in HiFive and other boards.
 
           flash bank $_FLASHNAME fespi 0x20000000 0 0 0 $_TARGETNAME
+
+ -- Flash Driver: dw-spi
+     Driver for SPI NOR flash chips connected via DesignWare SPI Core,
+     used in number of MCUs.  Currently, only MIPS M4K CPU architecture
+     is supported.
+
+     The flash size is autodetected based on the table of known JEDEC
+     IDs hardcoded in the OpenOCD sources.  When flash size is set to 0,
+     probed Flash size is used.
+
+     This driver requires configuring DRAM controller first, setting up
+     a working area big enough to hold read/write buffers and switching
+     Flash chip to 32bit mode via Tcl commands.
+
+          Note: If chip contains Boot controller, its 24/32bit setting
+          must match Flash chip.  If Flash chip's reset line is not
+          connected to JTAG adapter, CPU reset may cause these
+          configurations to be out of sync.
+
+     Mandatory driver's arguments are
+
+        * -FREQ ...  core frequency in Hz, used in communication speed
+          calculation.
+        * -SIMC ...  SIMC register block absolute address.  This value
+          is the same as for Linux's driver device tree register field.
+        * -SPI_MST ...  SPI_MST register address.  When available, it is
+          used for switching between SPI Boot and Master controllers.
+          This value is the same as for Linux's driver device tree
+          register field second argument.  Set to 0 if SPI Boot
+          controller not available.
+        * -IF_OWNER_OFFSET ...  offset of IF_OWNER field inside SPI_MST
+          register.  Set to 0 if SPI Boot controller not available.
+
+     Optional driver's arguments are
+
+        * -SPEED ...  SPI device communication speed in Hz.  Minimal
+          speed depends on the -FREQ variable and has the value of
+          FREQ/0XFFFE.  The default value is 1000000.
+        * -CHIP_SELECT ...  Chip select pin.  The default value is 0.
+        * -TIMEOUT ...  flash communication timeout in seconds.  The
+          default value is 600.
+
+     For some SoCs there are shortcuts for mandatory arguments
+
+        * -JAGUAR2 ...  configuration for MSCC Jaguar2 SoC family.
+        * -OCELOT ...  configuration for MSCC Ocelot SoC family.
+
+     Driver provides shortcut arguments for MSCC -JAGUAR2 and -OCELOT
+     network switch SOCs, which set the correct values for -FREQ, -SIMC,
+     -SPI_MST and -IF_OWNER_OFFSET arguments.
+
+     Example of equivalent configurations for Jaguar2 SoC
+
+          flash bank $_FLASHNAME dw-spi 0x40000000 0x02000000 4 4 $_TARGETNAME -freq 250000000 -simc 0x70101000 -spi_mst 0x70000024 -if_owner_offset 6 -speed 3000000
+          flash bank $_FLASHNAME dw-spi 0x40000000 0x02000000 4 4 $_TARGETNAME -jaguar2 -speed 3000000
 
 12.5.2 Internal Flash (Microcontrollers)
 ----------------------------------------
@@ -5935,6 +6109,23 @@ activate driver-specific commands.
      reset.  _The current implementation is incomplete.  Unprotecting
      flash pages is not supported._
 
+ -- Flash Driver: eneispif
+     All versions of the KB1200 microcontrollers from ENE include
+     internal flash.  The eneispif flash driver supports the KB1200
+     family of devices.  The driver automatically recognizes the
+     specific version's flash parameters and autoconfigures itself.  The
+     flash bank starts at address 0x60000000.  An optional additional
+     parameter sets the address of eneispif controller, with the default
+     address is 0x50101000.
+
+
+          flash bank $_FLASHNAME eneispif 0x60000000 0 0 0 $_TARGETNAME \
+                     0x50101000
+
+          # Address defaults to 0x50101000
+          flash bank $_FLASHNAME eneispif 0x60000000 0 0 0 $_TARGETNAME
+
+
  -- Flash Driver: esirisc
      Members of the eSi-RISC family may optionally include internal
      flash programmed via the eSi-TSMC Flash interface.  Additional
@@ -5980,17 +6171,23 @@ activate driver-specific commands.
      supported, nor is Chip Erase (only Sector Erase is implemented)._
 
  -- Flash Driver: kinetis
-     Kx, KLx, KVx and KE1x members of the Kinetis microcontroller family
-     from NXP (former Freescale) include internal flash and use ARM
-     Cortex-M0+ or M4 cores.  The driver automatically recognizes flash
-     size and a number of flash banks (1-4) using the chip
+     Several microcontrollers from NXP (former Freescale), including Kx,
+     KLx, KVx and KE1x members of the Kinetis family, and
+     S32K11x/S32K14x microcontrollers, include internal flash and use
+     ARM Cortex-M0+ or M4 cores.  Kinetis and S32K1 families use
+     incompatible identification registers, so the driver assumes
+     Kinetis and requires a driver option to indicate S32K1 is to be
+     used.  Within the familiy, the driver automatically recognizes
+     flash size and a number of flash banks (1-4) using the chip
      identification register, and autoconfigures itself.  Use kinetis_ke
      driver for KE0x and KEAx devices.
 
      The KINETIS driver defines option:
+        * -s32k select S32K11x/S32K14x microcontroller flash support.
+
         * -sim-base ADDR ...  base of System Integration Module where
-          chip identification resides.  Driver tries two known locations
-          if option is omitted.
+          chip identification resides.  Driver tries known locations if
+          option is omitted.
 
           flash bank $_FLASHNAME kinetis 0 0 0 0 $_TARGETNAME
 
@@ -6033,10 +6230,11 @@ activate driver-specific commands.
           completes.
 
       -- Command: kinetis nvm_partition
-          For FlexNVM devices only (KxxDX and KxxFX). Command shows or
-          sets data flash or EEPROM backup size in kilobytes, sets two
-          EEPROM blocks sizes in bytes and enables/disables loading of
-          EEPROM contents to FlexRAM during reset.
+          For FlexNVM devices only (KxxDX and KxxFX). Not supported
+          (yet) on S32K1 devices.  Command shows or sets data flash or
+          EEPROM backup size in kilobytes, sets two EEPROM blocks sizes
+          in bytes and enables/disables loading of EEPROM contents to
+          FlexRAM during reset.
 
           For details see device reference manual, Flash Memory Module,
           Program Partition command.
@@ -6352,17 +6550,25 @@ activate driver-specific commands.
      include internal flash.  The NPCX flash driver supports the NPCX
      family of devices.  The driver automatically recognizes the
      specific version's flash parameters and autoconfigures itself.  The
-     flash bank starts at address 0x64000000.
+     flash bank starts at address 0x64000000.  An optional additional
+     parameter sets the FIU version for the bank, with the default FIU
+     is NPCX.FIU.
 
+
+          flash bank $_FLASHNAME npcx 0x64000000 0 0 0 $_TARGETNAME npcx_v2.fiu
+
+          # FIU defaults to npcx.fiu
           flash bank $_FLASHNAME npcx 0x64000000 0 0 0 $_TARGETNAME
 
+
  -- Flash Driver: nrf5
-     All members of the nRF51 microcontroller families from Nordic
-     Semiconductor include internal flash and use ARM Cortex-M0 core.
-     nRF52 family powered by ARM Cortex-M4 or M4F core is supported too.
-     nRF52832 is fully supported including BPROT flash protection
-     scheme.  nRF52833 and nRF52840 devices are supported with the
-     exception of security extensions (flash access control list - ACL).
+     Supports all members of the nRF51, nRF52 and nRF53 microcontroller
+     families from Nordic Semiconductor.  nRF91 family is supported too.
+     One driver handles both the main flash and the UICR area.
+
+     Flash protection is handled on nRF51 family and nRF52805, nRF52810,
+     nRF52811, nRF52832 devices.  Flash access control list (ACL)
+     protection scheme of the newer devices is not supported.
 
           flash bank $_FLASHNAME nrf5 0 0x00000000 0 0 $_TARGETNAME
 
@@ -6373,9 +6579,6 @@ activate driver-specific commands.
           configuration registers as well.  It must be noted that this
           command works only for chips that do not have factory
           pre-programmed region 0 code.
-
-      -- Command: nrf5 info
-          Decodes and shows information from FICR and UICR registers.
 
  -- Flash Driver: ocl
      This driver is an implementation of the "on chip flash loader"
@@ -6552,6 +6755,120 @@ activate driver-specific commands.
           value shown by 'flash banks'.  Note: only Main and Work flash
           regions support Erase operation.
 
+ -- Flash Driver: qn908x
+     The NXP QN908x microcontrollers feature a Cortex-M4F with
+     integrated Bluetooth LE 5 support and an internal flash of up to
+     512 KiB. These chips only support the SWD interface.
+
+     The QN908X driver uses the internal "Flash Memory Controller" block
+     via SWD to erase, program and read the internal flash.  This driver
+     does not support the ISP (In-System Programming) mode which is an
+     alternate way to program the flash via UART, SPI or USB.
+
+     The internal flash is 512 KiB in size in all released chips and it
+     starts at the address 0x01000000, although it can be mapped to
+     address 0 and it is aliased to other addresses.  This driver only
+     recognizes the bank starting at address 0x01000000.
+
+     The internal bootloader stored in ROM is in charge of loading and
+     verifying the image from flash, or enter ISP mode.  The programmed
+     image must start at the beginning of the flash and contain a valid
+     header and a matching CRC32 checksum.  Additionally, the image
+     header contains a "Code Read Protection" (CRP) word which indicates
+     whether SWD access is enabled, as well as whether ISP mode is
+     enabled.  Therefore, it is possible to program an image that
+     disables SWD and ISP making it impossible to program another image
+     in the future through these interfaces, or even debug the current
+     image.  While this is a valid use case for production deployments
+     where the chips are locked down, by default this driver doesn't
+     allow such images that disable the SWD interface.  To program such
+     images see the 'qn908x allow_brick' command.
+
+     Apart from the CRP field which is located in the image header, the
+     last page of the flash memory contains a "Flash lock and protect"
+     descriptor which allows to individually protect each 2 KiB page, as
+     well as disabling SWD access to the flash and RAM. If this access
+     is disabled it is not possible to read, erase or program individual
+     pages from the SWD interface or even access the read-only "Flash
+     information page" with information about the bootloader version and
+     flash size.  However when this protection is in place, it is still
+     possible to mass erase the whole chip and then program a new image,
+     for which you can use the 'qn908x mass_erase'.
+
+     Example:
+          flash bank $FLASHNAME qn908x 0x01000000 0 0 0 $TARGETNAME calc_checksum
+
+     Parameters:
+        * 'calc_checksum' optional parameter to compute the required
+          checksum of the first bytes in the vector table.
+               Note: If the checksum in the header of your image is
+               invalid and you don't provide the 'calc_checksum' option
+               the boot ROM will not boot your image and it may render
+               the flash inaccessible.  On the other hand, if you use
+               this option to compute the checksum keep in mind that
+               'verify_image' will fail on those four bytes of the
+               checksum since those bytes in the flash will have the
+               updated checksum.
+
+      -- Command: qn908x allow_brick
+          Allow the qn908x driver to program images with a "Code Read
+          Protection" byte that disables the SWD access.  Programming
+          such image will cause OpenOCD to not be able to reach the
+          target over SWD anymore after the new image is programmed and
+          its configuration takes effect, e.g.  after a reboot.  After
+          executing 'qn908x allow_brick' these images will be allowed to
+          be programmed when writing to the flash.
+
+      -- Command: qn908x disable_wdog
+          Disable the watchdog timer (WDT) by resetting its CTRL field.
+          The WDT starts enabled after a 'reset halt' and it doesn't run
+          while the target is halted.  However, the verification process
+          in this driver uses the generic Cortex-M verification process
+          which executes a payload in RAM and thus requires the watchdog
+          to be disabled before running 'verify_image' after a reset
+          halt or any other condition where the watchdog is running.
+          Note that this is not done automatically and you must run this
+          command in those scenarios.
+
+      -- Command: qn908x mass_erase
+          Erases the complete flash using the mass_erase method.  Mass
+          erase is only allowed if enabled in the Lock Status Register 8
+          (LOCK_STAT_8) which is read from the last sector of the flash
+          on boot.  However, this mass_erase lock protection can be
+          bypassed and this command does so automatically.
+
+          In the same LOCK_STAT_8 the flash and RAM access from SWD can
+          be disabled by setting two bits in this register.  After a
+          mass_erase, all the bits of the flash would be set, making it
+          the default to restrict SWD access to the flash and RAM
+          regions.  This new after erase LOCK_STAT_8 value only takes
+          effect after being read from flash on the next reboot for
+          example.  After a mass_erase the LOCK_STAT_8 register is
+          changed by the hardware to allow access to flash and RAM
+          regardless of the value on flash, but only right after a
+          mass_erase and until the next boot.  Therefore it is possible
+          to perform a mass_erase, program a new image, verify it and
+          then reboot to a valid image that's locked from the SWD
+          access.
+
+          The 'qn908x mass_erase' command clears the bits that would be
+          loaded from the flash into LOCK_STAT_8 after erasing the whole
+          chip to allow SWD access for debugging or re-flashing an image
+          without a mass_erase by default.  If the image being
+          programmed also programs the last page of the flash with its
+          own settings, this mass_erase behavior will interfere with
+          that write since a new erase of at least the last page would
+          need to be performed before writing to it again.  For this
+          reason the optional 'keep_lock' argument can be used to leave
+          the flash and RAM lock set.  For development environments, the
+          default behavior is desired.
+
+          The mass erase locking mechanism is independent from the
+          individual page locking bits, so it is possible that you can't
+          erase a given page that is locked and you can't unprotect that
+          page because the locking bits are also locked, but can still
+          mass erase the whole flash.
+
  -- Flash Driver: rp2040
      Supports RP2040 "Raspberry Pi Pico" microcontroller.  RP2040 is a
      dual-core device with two CM0+ cores.  Both cores share the same
@@ -6559,6 +6876,26 @@ activate driver-specific commands.
      with an external QSPI flash; a Boot ROM provides helper functions.
 
           flash bank $_FLASHNAME rp2040_flash $_FLASHBASE $_FLASHSIZE 1 32 $_TARGETNAME
+
+ -- Flash Driver: rsl10
+     Supports Onsemi RSL10 microcontroller flash memory.  Uses functions
+     stored in ROM to control flash memory interface.
+
+          flash bank $_FLASHNAME rsl10 $_FLASHBASE $_FLASHSIZE 0 0 $_TARGETNAME
+
+      -- Command: rsl10 lock key1 key2 key3 key4
+          Writes KEY1 KEY2 KEY3 KEY4 words to 0X81044 0X81048 0X8104C
+          0X8050.  Locks debug port by writing 0X4C6F634B to 0X81040.
+
+          To unlock use the 'rsl10 unlock key1 key2 key3 key4' command.
+
+      -- Command: rsl10 unlock key1 key2 key3 key4
+          Unlocks debug port, by writing KEY1 KEY2 KEY3 KEY4 words to
+          registers through DAP, and clears 0X81040 address in flash to
+          0x1.
+
+      -- Command: rsl10 mass_erase
+          Erases all unprotected flash sectors.
 
  -- Flash Driver: sim3x
      All members of the SiM3 microcontroller family from Silicon
@@ -6601,13 +6938,13 @@ activate driver-specific commands.
                the procedure is applied to all of them.
 
  -- Flash Driver: stm32f1x
-     All members of the STM32F0, STM32F1 and STM32F3 microcontroller
-     families from STMicroelectronics and all members of the GD32F1x0,
-     GD32F3x0 and GD32E23x microcontroller families from GigaDevice
-     include internal flash and use ARM Cortex-M0/M3/M4/M23 cores.  The
-     driver also works with GD32VF103 powered by RISC-V core.  The
-     driver automatically recognizes a number of these chips using the
-     chip identification register, and autoconfigures itself.
+     This driver supports the STM32F0, STM32F1 and STM32F3
+     microcontroller series from STMicroelectronics.  The driver is also
+     compatible with the GD32F1, GD32VF103 (RISC-V core), GD32F3 and
+     GD32E23 microcontroller series from GigaDevice.  The driver also
+     supports the APM32F0 and APM32F1 series from Geehy Semiconductor.
+     The driver automatically recognizes a number of these chips using
+     the chip identification register, and autoconfigures itself.
 
           flash bank $_FLASHNAME stm32f1x 0 0 0 0 $_TARGETNAME
 
@@ -6660,9 +6997,10 @@ activate driver-specific commands.
  -- Flash Driver: stm32f2x
      All members of the STM32F2, STM32F4 and STM32F7 microcontroller
      families from STMicroelectronics include internal flash and use ARM
-     Cortex-M3/M4/M7 cores.  The driver automatically recognizes a
-     number of these chips using the chip identification register, and
-     autoconfigures itself.
+     Cortex-M3/M4/M7 cores.  The driver also works for the APM32F4
+     series from Geehy Semiconductor.  The driver automatically
+     recognizes a number of these chips using the chip identification
+     register, and autoconfigures itself.
 
           flash bank $_FLASHNAME stm32f2x 0 0 0 0 $_TARGETNAME
 
@@ -6802,7 +7140,7 @@ activate driver-specific commands.
           The NUM parameter is a value shown by 'flash banks'.
 
  -- Flash Driver: stm32l4x
-     All members of the STM32 G0, G4, L4, L4+, L5, U5, WB and WL
+     All members of the STM32 C0, G0, G4, L4, L4+, L5, U0, U5, WB and WL
      microcontroller families from STMicroelectronics include internal
      flash and use ARM Cortex-M0+, M4 and M33 cores.  The driver
      automatically recognizes a number of these chips using the chip
@@ -6861,7 +7199,7 @@ activate driver-specific commands.
           contains the RDP option byte, Watchdog configuration, BOR
           level etc.
 
-      -- Command: stm32l4x option_write num reg_offset reg_mask
+      -- Command: stm32l4x option_write num reg_offset value [reg_mask]
           Write an option byte register of the stm32l4x device.  The NUM
           parameter is a value shown by 'flash banks', REG_OFFSET is the
           register offset of the Option byte to write, and REG_MASK is
