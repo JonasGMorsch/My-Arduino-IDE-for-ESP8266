@@ -12,7 +12,7 @@
  */
 /*
  * Automatically generated file. DO NOT EDIT.
- * Espressif IoT Development Framework (ESP-IDF) 5.4.1 Configuration Header
+ * Espressif IoT Development Framework (ESP-IDF) 5.4.2 Configuration Header
  */
        
 /* List of deprecated options */
@@ -30,6 +30,10 @@
  */
 /* CPU instruction prefetch padding size for memory protection scenario */
 /* Memory alignment size for PMS */
+        /**
+         * The ESP_BOOTLOADER_RESERVE_RTC size must have the same alignment of RTC_TIMER_RESERVE_RTC, else
+         * the segment will overflow at link time because not enough bytes are allocated for the RTC segment.
+         */
     /* rtc timer data (s_rtc_timer_retain_mem, see esp_clk.c files). For rtc_timer_data_in_rtc_mem section. */
 /* If the cache size is less than 512KB, then there is a region of RAM
  * above the ROM-reserved region and below the start of the cache.
@@ -64,7 +68,7 @@ MEMORY
   /**
    * lp ram memory (RWX). Persists over deep sleep. // TODO: IDF-5667
    */
-  lp_ram_seg(RW) : org = 0x50108000 + ((0x10) + (24)), len = 0x8000 - ((0x10) + (24))
+  lp_ram_seg(RW) : org = 0x50108000 + ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24)), len = 0x8000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* We reduced the size of lp_ram_seg by RESERVE_RTC_MEM value.
      It reserves the amount of LP memory that we use for this memory segment.
      This segment is intended for keeping:
@@ -73,7 +77,7 @@ MEMORY
      The aim of this is to keep data that will not be moved around and have a fixed address.
      This segment is placed at the beginning of LP RAM, as the end of LP RAM is occupied by LP ROM stack/data
   */
-  lp_reserved_seg(RW) : org = 0x50108000, len = ((0x10) + (24))
+  lp_reserved_seg(RW) : org = 0x50108000, len = ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* PSRAM seg */
   extern_ram_seg(RWX) : org = 0x48000000, len = (0x10000 << 10)
 }

@@ -14,7 +14,7 @@
 */
 /*
  * Automatically generated file. DO NOT EDIT.
- * Espressif IoT Development Framework (ESP-IDF) 5.4.1 Configuration Header
+ * Espressif IoT Development Framework (ESP-IDF) 5.4.2 Configuration Header
  */
        
 /* List of deprecated options */
@@ -32,6 +32,10 @@
  */
 /* CPU instruction prefetch padding size for memory protection scenario */
 /* Memory alignment size for PMS */
+        /**
+         * The ESP_BOOTLOADER_RESERVE_RTC size must have the same alignment of RTC_TIMER_RESERVE_RTC, else
+         * the segment will overflow at link time because not enough bytes are allocated for the RTC segment.
+         */
     /* rtc timer data (s_rtc_timer_retain_mem, see esp_clk.c files). For rtc_timer_data_in_rtc_mem section. */
 MEMORY
 {
@@ -57,7 +61,7 @@ MEMORY
   /* (See iram0_2_seg for meaning of 0x20 offset in the above.) */
   /* RTC fast memory (executable). Persists over deep sleep.
    */
-  rtc_iram_seg(RWX) : org = 0x40070000, len = 0x2000 - ((0x10) + (24))
+  rtc_iram_seg(RWX) : org = 0x40070000, len = 0x2000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* RTC slow memory (data accessible). Persists over deep sleep.
 
      Start of RTC slow memory is reserved for ULP co-processor code + data, if enabled.
@@ -65,7 +69,7 @@ MEMORY
   rtc_slow_seg(RW) : org = 0x50000000 + 512,
                                      len = 0x2000 - 512
   /* RTC fast memory (same block as above, rtc_iram_seg), viewed from data bus */
-  rtc_data_seg(RW) : org = 0x3ff9e000, len = 0x2000 - ((0x10) + (24))
+  rtc_data_seg(RW) : org = 0x3ff9e000, len = 0x2000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* We reduced the size of rtc_data_seg and rtc_iram_seg by RESERVE_RTC_MEM value.
      It reserves the amount of RTC fast memory that we use for this memory segment.
      This segment is intended for keeping:
@@ -73,7 +77,7 @@ MEMORY
        - (higher addr) bootloader rtc data (s_bootloader_retain_mem, when a Kconfig option is on).
      The aim of this is to keep data that will not be moved around and have a fixed address.
   */
-  rtc_reserved_seg(RW) : org = 0x3ff9e000 + 0x2000 - ((0x10) + (24)), len = ((0x10) + (24))
+  rtc_reserved_seg(RW) : org = 0x3ff9e000 + 0x2000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24)), len = ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* external memory, covers the dport, dram0, dram1 cacheable address space */
   extern_ram_seg(RWX) : org = 0x3F800000,
                                      len = 0x780000

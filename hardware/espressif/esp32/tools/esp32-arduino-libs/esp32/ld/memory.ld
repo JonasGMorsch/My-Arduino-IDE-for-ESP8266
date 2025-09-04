@@ -21,7 +21,7 @@
 */
 /*
  * Automatically generated file. DO NOT EDIT.
- * Espressif IoT Development Framework (ESP-IDF) 5.4.1 Configuration Header
+ * Espressif IoT Development Framework (ESP-IDF) 5.4.2 Configuration Header
  */
        
 /* List of deprecated options */
@@ -39,6 +39,10 @@
  */
 /* CPU instruction prefetch padding size for memory protection scenario */
 /* Memory alignment size for PMS */
+        /**
+         * The ESP_BOOTLOADER_RESERVE_RTC size must have the same alignment of RTC_TIMER_RESERVE_RTC, else
+         * the segment will overflow at link time because not enough bytes are allocated for the RTC segment.
+         */
     /* rtc timer data (s_rtc_timer_retain_mem, see esp_clk.c files). For rtc_timer_data_in_rtc_mem section. */
 /* If BT is not built at all */
 MEMORY
@@ -73,16 +77,16 @@ MEMORY
   drom0_0_seg (R) : org = 0x3F400020, len = 0x400000-0x20
   /* (See iram0_2_seg for meaning of 0x20 offset in the above.) */
   /* RTC fast memory (executable). Persists over deep sleep. */
-  rtc_iram_seg(RWX) : org = 0x400C0000, len = 0x2000 - (0x10)
+  rtc_iram_seg(RWX) : org = 0x400C0000, len = 0x2000 - (((0x10) + (8 - 1)) & ~(8 - 1))
   /* RTC fast memory (same block as above, rtc_iram_seg), viewed from data bus */
-  rtc_data_seg(RW) : org = 0x3ff80000, len = 0x2000 - (0x10)
+  rtc_data_seg(RW) : org = 0x3ff80000, len = 0x2000 - (((0x10) + (8 - 1)) & ~(8 - 1))
   /* We reduced the size of rtc_iram_seg and rtc_data_seg by ESP_BOOTLOADER_RESERVE_RTC value.
      It reserves the amount of RTC fast memory that we use for this memory segment.
      This segment is intended for keeping bootloader rtc data (s_bootloader_retain_mem, when a Kconfig option is on).
      The aim of this is to keep data that will not be moved around and have a fixed address.
      org = 0x3ff80000 + 0x2000 - ESP_BOOTLOADER_RESERVE_RTC == SOC_RTC_DRAM_HIGH - sizeof(rtc_retain_mem_t)
   */
-  rtc_fast_reserved_seg(RW) : org = 0x3ff80000 + 0x2000 - (0x10), len = (0x10)
+  rtc_fast_reserved_seg(RW) : org = 0x3ff80000 + 0x2000 - (((0x10) + (8 - 1)) & ~(8 - 1)), len = (((0x10) + (8 - 1)) & ~(8 - 1))
   /* RTC slow memory (data accessible). Persists over deep sleep.
 
      Start of RTC slow memory is reserved for ULP co-processor code + data, if enabled.

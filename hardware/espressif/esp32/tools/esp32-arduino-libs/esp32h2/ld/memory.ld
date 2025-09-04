@@ -12,7 +12,7 @@
  */
 /*
  * Automatically generated file. DO NOT EDIT.
- * Espressif IoT Development Framework (ESP-IDF) 5.4.1 Configuration Header
+ * Espressif IoT Development Framework (ESP-IDF) 5.4.2 Configuration Header
  */
        
 /* List of deprecated options */
@@ -30,6 +30,10 @@
  */
 /* CPU instruction prefetch padding size for memory protection scenario */
 /* Memory alignment size for PMS */
+        /**
+         * The ESP_BOOTLOADER_RESERVE_RTC size must have the same alignment of RTC_TIMER_RESERVE_RTC, else
+         * the segment will overflow at link time because not enough bytes are allocated for the RTC segment.
+         */
     /* rtc timer data (s_rtc_timer_retain_mem, see esp_clk.c files). For rtc_timer_data_in_rtc_mem section. */
 /*
  * IDRAM0_2_SEG_SIZE_DEFAULT is used when page size is 64KB
@@ -61,7 +65,7 @@ MEMORY
   /**
    * lp ram memory (RWX). Persists over deep sleep. // ESP32H2-TODO IDF-6272
    */
-  lp_ram_seg(RW) : org = 0x50000000, len = 0x1000 - ((0x10) + (24))
+  lp_ram_seg(RW) : org = 0x50000000, len = 0x1000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
   /* We reduced the size of lp_ram_seg by RESERVE_RTC_MEM value.
      It reserves the amount of LP memory that we use for this memory segment.
      This segment is intended for keeping:
@@ -69,7 +73,7 @@ MEMORY
        - (higher addr) bootloader rtc data (s_bootloader_retain_mem, when a Kconfig option is on).
      The aim of this is to keep data that will not be moved around and have a fixed address.
   */
-  lp_reserved_seg(RW) : org = 0x50000000 + 0x1000 - ((0x10) + (24)), len = ((0x10) + (24))
+  lp_reserved_seg(RW) : org = 0x50000000 + 0x1000 - ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24)), len = ((((0x10) + (8 - 1)) & ~(8 - 1)) + (24))
 }
 /* Heap ends at top of sram_seg */
 _heap_end = 0x40000000;

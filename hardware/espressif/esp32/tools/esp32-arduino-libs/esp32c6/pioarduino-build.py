@@ -477,7 +477,7 @@ env.Append(
         "ESP32_ARDUINO_LIB_BUILDER",
         ("ESP_MDNS_VERSION_NUMBER", '\\"1.8.2\\"'),
         "ESP_PLATFORM",
-        ("IDF_VER", '\\"v5.4.1-743-gaed8bdc8dd\\"'),
+        ("IDF_VER", '\\"v5.4.2-25-g858a988d6e\\"'),
         ("MBEDTLS_CONFIG_FILE", '\\"mbedtls/esp_config.h\\"'),
         ("MD5_ENABLED", 1),
         ("OPENTHREAD_CONFIG_FILE", '\\"openthread-core-esp32x-ftd-config.h\\"'),
